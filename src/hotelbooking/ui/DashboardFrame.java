@@ -42,6 +42,7 @@ public final class DashboardFrame extends JFrame {
         add(buildTabs(), BorderLayout.CENTER);
         add(buildFooter(), BorderLayout.SOUTH);
         refreshAll();
+        UiStyle.apply(this);
         setExtendedState(JFrame.MAXIMIZED_BOTH);
         setLocationRelativeTo(null);
     }
