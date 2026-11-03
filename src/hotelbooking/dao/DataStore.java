@@ -70,6 +70,10 @@ public final class DataStore {
                     users.put(user.getUsername().toLowerCase(Locale.ROOT), user);
                 } catch (RuntimeException ignored) {}
             }
+            if (users.isEmpty()) {
+                throw new IOException("data/users.txt tồn tại nhưng không có tài khoản hợp lệ. "
+                        + "Hãy sao lưu và kiểm tra file này trước khi chạy lại.");
+            }
             return;
         }
 
@@ -92,9 +96,10 @@ public final class DataStore {
     }
 
     private void bootstrapFirstAdminIfNeeded() throws IOException {
-        // A genuinely empty installation needs one administrator to manage roles.
-        // Never promote a public registration to ADMIN.
-        if (!users.isEmpty()) return;
+        // A new installation or a legacy data set without an administrator
+        // needs a bootstrap account. Never promote a public registration to ADMIN.
+        boolean hasAdmin = users.values().stream().anyMatch(u -> u.getRole() == Role.ADMIN);
+        if (hasAdmin) return;
 
         byte[] random = new byte[24];
         new SecureRandom().nextBytes(random);
