@@ -66,13 +66,14 @@ final class PaymentDialog extends JDialog {
         transfer.setLineWrap(true);
         transfer.setWrapStyleWord(true);
         transfer.setBackground(getBackground());
-        add(transfer, BorderLayout.SOUTH);
-
+        JPanel bottom = new JPanel(new BorderLayout(8, 8));
+        bottom.add(transfer, BorderLayout.CENTER);
         JButton close = new JButton("Đóng");
         close.addActionListener(e -> dispose());
         JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         actions.add(close);
-        add(actions, BorderLayout.PAGE_END);
+        bottom.add(actions, BorderLayout.SOUTH);
+        add(bottom, BorderLayout.SOUTH);
         setMinimumSize(new Dimension(520, 620));
         pack();
         setLocationRelativeTo(owner);
