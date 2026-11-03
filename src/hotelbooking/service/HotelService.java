@@ -74,7 +74,9 @@ public final class HotelService {
     }
 
     public boolean isAvailable(String roomId, LocalDate checkIn, LocalDate checkOut) {
-        if (!data.rooms().containsKey(roomId)) return false;
+        expirePending();
+        if (!data.rooms().containsKey(roomId) || checkIn == null || checkOut == null
+                || !checkOut.isAfter(checkIn)) return false;
         return data.bookings().values().stream().noneMatch(b ->
                 b.getRoomIds().contains(roomId)
                 && b.getStatus().blocksAvailability()
@@ -82,7 +84,7 @@ public final class HotelService {
                 && b.getCheckIn().isBefore(checkOut));
     }
 
-    public Booking createBooking(User actor, String guestName, String cccd, String phone,
+    public synchronized Booking createBooking(User actor, String guestName, String cccd, String phone,
                                  int guestCount, List<String> roomIds,
                                  LocalDate checkIn, LocalDate checkOut) throws IOException {
         requireActive(actor);
@@ -159,7 +161,9 @@ public final class HotelService {
             throw new IllegalArgumentException("Không thể hủy lượt đặt ở trạng thái " + booking.getStatus() + ".");
         }
         booking.setStatus(BookingStatus.CANCELLED);
-        data.payments().put(bookingId, data.payments().getOrDefault(bookingId, "UNPAID") + "|CANCELLED");
+        String paymentState = data.payments().getOrDefault(bookingId, "UNPAID");
+        data.payments().put(bookingId, paymentState.startsWith("PAID|")
+                ? "REFUND_REVIEW|" + paymentState : "CANCELLED");
         data.saveBookings();
         data.savePayments();
         data.audit(actor.getUsername(), "CANCEL_BOOKING", bookingId);
