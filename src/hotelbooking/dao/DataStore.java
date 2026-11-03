@@ -126,6 +126,7 @@ public final class DataStore {
                 StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE);
         System.out.println("Đã tạo tài khoản Admin ban đầu. Xem thông tin tại: "
                 + credentials.toAbsolutePath());
+        saveUsers();
     }
 
     private void loadBookings() throws IOException {
