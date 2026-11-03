@@ -111,6 +111,11 @@ public final class DashboardFrame extends JFrame {
         actions.add(cancel);
         refresh.addActionListener(e -> refreshBookings());
         cancel.addActionListener(e -> cancelSelected());
+        if (user.getRole() == Role.GUEST) {
+            JButton reopenPayment = new JButton("Mở QR thanh toán");
+            actions.add(reopenPayment);
+            reopenPayment.addActionListener(e -> reopenPaymentSelected());
+        }
         if (user.getRole() == Role.ADMIN || user.getRole() == Role.STAFF) {
             JButton confirm = new JButton("Xác nhận đã nhận cọc");
             JButton checkIn = new JButton("Check-in");
@@ -224,6 +229,31 @@ public final class DashboardFrame extends JFrame {
             return null;
         }
         return String.valueOf(bookingTable.getValueAt(bookingTable.convertRowIndexToModel(row), 0));
+    }
+
+    private void reopenPaymentSelected() {
+        String id = selectedBookingId();
+        if (id == null) return;
+        try {
+            Booking booking = service.getBookings(user).stream()
+                    .filter(b -> b.getId().equals(id))
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy Booking này."));
+
+            if (booking.getStatus() != BookingStatus.PENDING_PAYMENT) {
+                JOptionPane.showMessageDialog(this,
+                        "Chỉ có thể mở lại QR với Booking đang chờ thanh toán.\n"
+                        + "Trạng thái hiện tại: " + booking.getStatus(),
+                        "Không thể mở QR", JOptionPane.INFORMATION_MESSAGE);
+                refreshBookings();
+                return;
+            }
+
+            new PaymentDialog(this, booking, user).setVisible(true);
+            refreshAll();
+        } catch (RuntimeException ex) {
+            showError(ex);
+        }
     }
 
     private void cancelSelected() {
