@@ -16,6 +16,9 @@ Mở project bằng NetBeans, Clean and Build, sau đó Run. Entry point: `hotel
 
 Tài khoản đăng ký công khai luôn được tạo với vai trò GUEST. Chỉ Admin có thể cấp quyền cao hơn. Tài khoản có giao dịch không bị xóa; dùng trạng thái LOCKED để khóa.
 
+## Tài khoản Admin ban đầu
+Nếu dữ liệu hiện tại chưa có tài khoản ADMIN, ứng dụng tự tạo một tài khoản quản trị với mật khẩu ngẫu nhiên mạnh và lưu thông tin một lần tại `data/INITIAL_ADMIN_CREDENTIALS.txt`. Chỉ người có quyền truy cập máy tính và thư mục dữ liệu mới đọc được file này. Đăng nhập bằng tài khoản đó, đổi mật khẩu ngay, sau đó xóa file thông tin khởi tạo. Không gửi file này lên GitHub hoặc cho người khác.
+
 ## Dữ liệu và di trú
 Khi chạy lần đầu, ứng dụng tạo thư mục `data/`:
 - `users.txt`: tài khoản, salt và PBKDF2 hash; không lưu mật khẩu rõ.
