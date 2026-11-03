@@ -78,7 +78,7 @@ public final class UiStyle {
         } else if (component instanceof JScrollPane scroll) {
             scroll.setBorder(roundedBorder(BORDER, RADIUS, 1, 1, 1, 1));
             scroll.getViewport().setBackground(SURFACE);
-        }        } else if (component instanceof JLabel label) {
+        } else if (component instanceof JLabel label) {
             label.setForeground(TEXT);
         } else if (component instanceof JTextArea area) {
             area.setForeground(TEXT);
