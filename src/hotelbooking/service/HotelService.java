@@ -135,6 +135,7 @@ public final class HotelService {
 
     public void confirmDeposit(User actor, String bookingId, String reference) throws IOException {
         requireStaffOrAdmin(actor);
+        expirePending();
         Booking booking = requireBooking(bookingId);
         if (booking.getStatus() != BookingStatus.PENDING_PAYMENT) {
             throw new IllegalArgumentException("Lượt đặt không ở trạng thái chờ thanh toán.");
@@ -260,12 +261,19 @@ public final class HotelService {
         for (Booking b : data.bookings().values()) {
             if (b.getStatus() == BookingStatus.PENDING_PAYMENT && b.getCreatedAt().isBefore(cutoff)) {
                 b.setStatus(BookingStatus.EXPIRED);
+                if ("PENDING".equals(data.payments().get(b.getId()))) {
+                    data.payments().put(b.getId(), "EXPIRED");
+                }
                 changed = true;
             }
         }
         if (changed) {
-            try { data.saveBookings(); }
-            catch (IOException ex) { throw new IllegalStateException(ex); }
+            try {
+                data.saveBookings();
+                data.savePayments();
+            } catch (IOException ex) {
+                throw new IllegalStateException(ex);
+            }
         }
     }
 
