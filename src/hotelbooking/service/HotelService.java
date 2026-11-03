@@ -278,9 +278,15 @@ public final class HotelService {
     }
 
     private void requireActive(User actor) {
-        if (actor == null || actor.getStatus() != AccountStatus.ACTIVE
-                || data.users().get(key(actor.getUsername())) == null) {
-            throw new SecurityException("Tài khoản không hợp lệ hoặc đã bị khóa.");
+        if (actor == null) {
+            throw new SecurityException("Phiên đăng nhập không hợp lệ. Vui lòng đăng nhập lại.");
+        }
+        User current = data.users().get(key(actor.getUsername()));
+        if (current == null || current.getStatus() != AccountStatus.ACTIVE) {
+            throw new SecurityException("Tài khoản không tồn tại hoặc đã bị khóa.");
+        }
+        if (current.getRole() != actor.getRole()) {
+            throw new SecurityException("Vai trò tài khoản đã thay đổi. Vui lòng đăng xuất và đăng nhập lại.");
         }
     }
 
