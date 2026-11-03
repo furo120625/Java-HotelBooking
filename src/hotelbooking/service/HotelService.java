@@ -125,6 +125,7 @@ public final class HotelService {
     }
 
     public List<Booking> getBookings(User actor) {
+        requireActive(actor);
         expirePending();
         return data.bookings().values().stream()
                 .filter(b -> actor.getRole() != Role.GUEST || b.getCreatedBy().equalsIgnoreCase(actor.getUsername()))
@@ -149,6 +150,7 @@ public final class HotelService {
     }
 
     public void cancelBooking(User actor, String bookingId) throws IOException {
+        requireActive(actor);
         Booking booking = requireBooking(bookingId);
         boolean privileged = actor.getRole() == Role.ADMIN || actor.getRole() == Role.STAFF;
         if (!privileged && !booking.getCreatedBy().equalsIgnoreCase(actor.getUsername())) {
@@ -247,7 +249,8 @@ public final class HotelService {
         data.audit(actor.getUsername(), "UPDATE_ROOM_PRICE", roomId + " -> " + price);
     }
 
-    public Map<String, String> getPaymentStates() {
+    public Map<String, String> getPaymentStates(User actor) {
+        requireStaffOrAdmin(actor);
         return Collections.unmodifiableMap(data.payments());
     }
 
