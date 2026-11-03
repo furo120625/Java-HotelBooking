@@ -14,7 +14,7 @@ Mở project bằng NetBeans, Clean and Build, sau đó Run. Entry point: `hotel
 - **STAFF**: quản lý booking, xác nhận tiền cọc thủ công, check-in/check-out.
 - **GUEST**: xem phòng, tự đặt phòng, thanh toán cọc, xem và hủy booking của chính mình.
 
-Tài khoản đăng ký công khai luôn được tạo với vai trò GUEST. Chỉ Admin có thể cấp quyền cao hơn. Tài khoản có giao dịch không bị xóa; dùng trạng thái LOCKED để khóa.
+Tài khoản đăng ký công khai luôn được tạo với vai trò GUEST. Chỉ Admin có thể cấp quyền cao hơn. Tài khoản có giao dịch không bị xóa; dùng trạng thái LOCKED để khóa. Các thao tác đọc lịch sử, hủy đặt phòng và chức năng quản trị kiểm tra lại trạng thái/role hiện tại; nếu role vừa thay đổi, phiên đăng nhập cũ phải đăng nhập lại.
 
 ## Tài khoản Admin ban đầu
 Nếu dữ liệu hiện tại chưa có tài khoản ADMIN, ứng dụng tự tạo một tài khoản quản trị với mật khẩu ngẫu nhiên mạnh và lưu thông tin một lần tại `data/INITIAL_ADMIN_CREDENTIALS.txt`. Chỉ người có quyền truy cập máy tính và thư mục dữ liệu mới đọc được file này. Đăng nhập bằng tài khoản đó, đổi mật khẩu ngay, sau đó xóa file thông tin khởi tạo. Không gửi file này lên GitHub hoặc cho người khác.
