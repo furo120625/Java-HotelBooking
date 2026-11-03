@@ -133,24 +133,46 @@ public final class HotelService {
                 .collect(Collectors.toList());
     }
 
-    public void confirmDeposit(User actor, String bookingId, String reference) throws IOException {
+    /**
+     * Records a staff/admin attestation that the bank transfer was checked manually.
+     * This is not an automated bank verification; the UI must collect the exact amount
+     * and a transaction reference before calling this method.
+     */
+    public synchronized void confirmDeposit(User actor, String bookingId, String reference,
+                                            long receivedAmount) throws IOException {
         requireStaffOrAdmin(actor);
         expirePending();
         Booking booking = requireBooking(bookingId);
         if (booking.getStatus() != BookingStatus.PENDING_PAYMENT) {
             throw new IllegalArgumentException("Lượt đặt không ở trạng thái chờ thanh toán.");
         }
-        if (reference == null || reference.trim().length() < 3) {
-            throw new IllegalArgumentException("Nhập mã giao dịch hoặc ghi chú xác nhận.");
+        String ref = reference == null ? "" : reference.trim();
+        if (ref.length() < 3) {
+            throw new IllegalArgumentException("Mã giao dịch phải có ít nhất 3 ký tự.");
         }
-        booking.setStatus(BookingStatus.CONFIRMED);
-        data.payments().put(bookingId, "PAID|" + reference.trim() + "|" + actor.getUsername());
-        data.saveBookings();
+        if (receivedAmount != booking.getDepositAmount()) {
+            throw new IllegalArgumentException("Số tiền nhận phải đúng bằng tiền cọc: "
+                    + booking.getDepositAmount() + " VND.");
+        }
+        boolean duplicateReference = data.payments().values().stream()
+                .filter(value -> value != null && value.startsWith("PAID|"))
+                .map(value -> value.split("\\|", -1))
+                .anyMatch(parts -> parts.length >= 2 && parts[1].equalsIgnoreCase(ref));
+        if (duplicateReference) {
+            throw new IllegalArgumentException("Mã giao dịch này đã được sử dụng cho một Booking khác.");
+        }
+
+        // Save payment first. If the booking write fails, the application will not
+        // show CONFIRMED; the audit log records the manual verification actor.
+        data.payments().put(bookingId, "PAID|" + ref + "|" + receivedAmount + "|" + actor.getUsername());
         data.savePayments();
-        data.audit(actor.getUsername(), "CONFIRM_DEPOSIT", bookingId + " | " + reference.trim());
+        booking.setStatus(BookingStatus.CONFIRMED);
+        data.saveBookings();
+        data.audit(actor.getUsername(), "MANUAL_DEPOSIT_VERIFIED",
+                bookingId + " | " + ref + " | " + receivedAmount);
     }
 
-    public void cancelBooking(User actor, String bookingId) throws IOException {
+    public synchronized void cancelBooking(User actor, String bookingId) throws IOException {
         requireActive(actor);
         Booking booking = requireBooking(bookingId);
         boolean privileged = actor.getRole() == Role.ADMIN || actor.getRole() == Role.STAFF;
@@ -163,13 +185,21 @@ public final class HotelService {
                 || booking.getStatus() == BookingStatus.EXPIRED) {
             throw new IllegalArgumentException("Không thể hủy lượt đặt ở trạng thái " + booking.getStatus() + ".");
         }
-        booking.setStatus(BookingStatus.CANCELLED);
+        if (!privileged && booking.getStatus() != BookingStatus.PENDING_PAYMENT) {
+            throw new SecurityException("Booking đã xác nhận. Vui lòng liên hệ nhân viên để xử lý yêu cầu hủy và hoàn tiền.");
+        }
+
         String paymentState = data.payments().getOrDefault(bookingId, "UNPAID");
+        if (paymentState.startsWith("PAID|") && !privileged) {
+            throw new SecurityException("Booking đã có tiền cọc. Chỉ Staff/Admin mới được xử lý hủy và hoàn tiền.");
+        }
+        booking.setStatus(BookingStatus.CANCELLED);
         data.payments().put(bookingId, paymentState.startsWith("PAID|")
                 ? "REFUND_REVIEW|" + paymentState : "CANCELLED");
         data.saveBookings();
         data.savePayments();
-        data.audit(actor.getUsername(), "CANCEL_BOOKING", bookingId);
+        data.audit(actor.getUsername(), "CANCEL_BOOKING",
+                bookingId + (paymentState.startsWith("PAID|") ? " | REFUND_REVIEW_REQUIRED" : ""));
     }
 
     public void checkIn(User actor, String bookingId) throws IOException {
@@ -177,7 +207,7 @@ public final class HotelService {
         Booking b = requireBooking(bookingId);
         if (b.getStatus() != BookingStatus.CONFIRMED) throw new IllegalArgumentException("Chỉ nhận phòng với lượt đặt đã xác nhận.");
         if (LocalDate.now().isBefore(b.getCheckIn())) throw new IllegalArgumentException("Chưa đến ngày nhận phòng.");
-        if (LocalDate.now().isAfter(b.getCheckOut())) throw new IllegalArgumentException("Đã quá ngày trả phòng.");
+        if (!LocalDate.now().isBefore(b.getCheckOut())) throw new IllegalArgumentException("Đã đến hoặc quá ngày trả phòng.");
         b.setStatus(BookingStatus.CHECKED_IN);
         data.saveBookings();
         data.audit(actor.getUsername(), "CHECK_IN", bookingId);
@@ -186,7 +216,13 @@ public final class HotelService {
     public void checkOut(User actor, String bookingId) throws IOException {
         requireStaffOrAdmin(actor);
         Booking b = requireBooking(bookingId);
-        if (b.getStatus() != BookingStatus.CHECKED_IN) throw new IllegalArgumentException("Lượt đặt chưa check-in.");
+        if (b.getStatus() != BookingStatus.CHECKED_IN) {
+            throw new IllegalArgumentException("Lượt đặt chưa check-in.");
+        }
+        if (LocalDate.now().isBefore(b.getCheckOut())) {
+            throw new IllegalArgumentException("Chưa đến ngày trả phòng (" + b.getCheckOut()
+                    + "). Không thể check-out sớm vì lịch phòng đã được giữ đến ngày này.");
+        }
         b.setStatus(BookingStatus.CHECKED_OUT);
         data.saveBookings();
         data.audit(actor.getUsername(), "CHECK_OUT", bookingId);
@@ -298,6 +334,10 @@ public final class HotelService {
         }
         if (current.getRole() != actor.getRole()) {
             throw new SecurityException("Vai trò tài khoản đã thay đổi. Vui lòng đăng xuất và đăng nhập lại.");
+        }
+        if (!current.getSalt().equals(actor.getSalt())
+                || !current.getPasswordHash().equals(actor.getPasswordHash())) {
+            throw new SecurityException("Mật khẩu đã thay đổi. Phiên đăng nhập cũ không còn hiệu lực; vui lòng đăng nhập lại.");
         }
     }
 
