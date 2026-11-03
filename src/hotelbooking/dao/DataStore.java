@@ -110,7 +110,7 @@ public final class DataStore {
         try {
             initialHash = PasswordUtil.hash(initialPasswordChars, salt);
         } finally {
-            Arrays.fill(initialPasswordChars, '\\0');
+            Arrays.fill(initialPasswordChars, (char) 0);
         }
         User admin = new User("admin", salt, initialHash,
                 "", Role.ADMIN, AccountStatus.ACTIVE);
