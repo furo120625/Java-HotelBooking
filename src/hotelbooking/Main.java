@@ -13,6 +13,7 @@ public final class Main {
         SwingUtilities.invokeLater(() -> {
             try {
                 UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+                hotelbooking.ui.UiStyle.install();
                 DataStore store = new DataStore();
                 HotelService service = new HotelService(store);
                 new LoginFrame(service).setVisible(true);

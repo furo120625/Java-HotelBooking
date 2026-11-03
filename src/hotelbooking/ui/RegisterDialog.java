@@ -43,6 +43,7 @@ final class RegisterDialog extends JDialog {
                 java.util.Arrays.fill(c, '\0');
             }
         });
+        UiStyle.apply(this);
         setMinimumSize(new Dimension(470, 260));
         pack();
         setLocationRelativeTo(owner);

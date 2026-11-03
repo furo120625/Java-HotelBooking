@@ -110,6 +110,7 @@ final class PaymentDialog extends JDialog {
         bottom.add(actions, BorderLayout.SOUTH);
         add(bottom, BorderLayout.SOUTH);
 
+        UiStyle.apply(this);
         setMinimumSize(new Dimension(520, 620));
         pack();
         setLocationRelativeTo(owner);
