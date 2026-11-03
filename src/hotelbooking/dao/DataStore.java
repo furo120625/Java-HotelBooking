@@ -233,10 +233,16 @@ public final class DataStore {
         for (Booking b : bookings.values()) {
             if (b.getStatus() == BookingStatus.PENDING_PAYMENT && b.getCreatedAt().isBefore(cutoff)) {
                 b.setStatus(BookingStatus.EXPIRED);
+                if ("PENDING".equals(payments.get(b.getId()))) {
+                    payments.put(b.getId(), "EXPIRED");
+                }
                 changed = true;
             }
         }
-        if (changed) saveBookings();
+        if (changed) {
+            saveBookings();
+            savePayments();
+        }
     }
 
     private static void writeAtomically(Path path, List<String> lines) throws IOException {
