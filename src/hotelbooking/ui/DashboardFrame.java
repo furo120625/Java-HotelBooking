@@ -269,13 +269,35 @@ public final class DashboardFrame extends JFrame {
     private void confirmSelected() {
         String id = selectedBookingId();
         if (id == null) return;
-        String reference = JOptionPane.showInputDialog(this,
-                "Nhập mã giao dịch hoặc ghi chú đối soát cho " + id + ":");
-        if (reference == null) return;
+
+        JTextField reference = new JTextField();
+        JTextField amount = new JTextField();
+        JPanel form = new JPanel(new GridLayout(0, 2, 8, 8));
+        form.add(new JLabel("Mã giao dịch ngân hàng"));
+        form.add(reference);
+        form.add(new JLabel("Số tiền thực nhận (VND)"));
+        form.add(amount);
+        form.add(new JLabel("Lưu ý"));
+        form.add(new JLabel("<html>Chỉ xác nhận sau khi đã kiểm tra giao dịch<br>trên tài khoản ngân hàng.</html>"));
+
+        if (JOptionPane.showConfirmDialog(this, form, "Đối soát tiền cọc: " + id,
+                JOptionPane.OK_CANCEL_OPTION, JOptionPane.WARNING_MESSAGE) != JOptionPane.OK_OPTION) return;
         try {
-            service.confirmDeposit(user, id, reference);
+            String rawAmount = amount.getText().trim().replace(",", "").replace(".", "");
+            long receivedAmount = Long.parseLong(rawAmount);
+            int approval = JOptionPane.showConfirmDialog(this,
+                    "Bạn xác nhận đã trực tiếp kiểm tra sao kê ngân hàng và nhận đủ "
+                    + String.format("%,d VND", receivedAmount) + " cho Booking " + id + "?",
+                    "Xác nhận đối soát thủ công", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+            if (approval != JOptionPane.YES_OPTION) return;
+
+            service.confirmDeposit(user, id, reference.getText(), receivedAmount);
             refreshAll();
-            JOptionPane.showMessageDialog(this, "Đã xác nhận tiền cọc. Booking chuyển sang CONFIRMED.");
+            JOptionPane.showMessageDialog(this,
+                    "Đã ghi nhận xác nhận đối soát thủ công. Booking chuyển sang CONFIRMED.");
+        } catch (NumberFormatException ex) {
+            JOptionPane.showMessageDialog(this, "Số tiền phải là số nguyên VND hợp lệ.",
+                    "Dữ liệu không hợp lệ", JOptionPane.WARNING_MESSAGE);
         } catch (RuntimeException | IOException ex) { showError(ex); }
     }
 
@@ -371,9 +393,17 @@ public final class DashboardFrame extends JFrame {
         if (JOptionPane.showConfirmDialog(this, panel, "Thông tin tài khoản",
                 JOptionPane.OK_CANCEL_OPTION) != JOptionPane.OK_OPTION) return;
         char[] secret = password.getPassword();
+        boolean passwordChanged = secret.length > 0;
         try {
             service.updateProfile(user, phone.getText(), secret);
-            JOptionPane.showMessageDialog(this, "Đã cập nhật thông tin.");
+            if (passwordChanged) {
+                JOptionPane.showMessageDialog(this,
+                        "Đã đổi mật khẩu. Vì lý do bảo mật, bạn sẽ được đăng xuất và cần đăng nhập lại.");
+                dispose();
+                onLogout.run();
+            } else {
+                JOptionPane.showMessageDialog(this, "Đã cập nhật thông tin.");
+            }
         } catch (RuntimeException | IOException ex) { showError(ex); }
         finally { java.util.Arrays.fill(secret, '\0'); }
     }
