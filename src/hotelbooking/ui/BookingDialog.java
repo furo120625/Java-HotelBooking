@@ -62,6 +62,7 @@ final class BookingDialog extends JDialog {
         cancel.addActionListener(e -> dispose());
         submit.addActionListener(e -> createBooking());
         refreshRooms();
+        UiStyle.apply(this);
         setMinimumSize(new Dimension(850, 620));
         setSize(900, 650);
         setLocationRelativeTo(owner);
