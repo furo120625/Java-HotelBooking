@@ -38,6 +38,7 @@ public final class LoginFrame extends JFrame {
         login.addActionListener(e -> doLogin());
         password.addActionListener(e -> doLogin());
         register.addActionListener(e -> new RegisterDialog(this, service).setVisible(true));
+        UiStyle.apply(this);
         pack();
         setLocationRelativeTo(null);
     }
