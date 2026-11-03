@@ -61,14 +61,19 @@ public final class DataStore {
 
     private void loadUsers() throws IOException {
         if (Files.exists(USERS_FILE)) {
-            for (String line : Files.readAllLines(USERS_FILE, StandardCharsets.UTF_8)) {
-                String[] p = line.split("\\|", -1);
-                if (p.length != 6) continue;
+            List<String> lines = Files.readAllLines(USERS_FILE, StandardCharsets.UTF_8);
+            for (int i = 0; i < lines.size(); i++) {
+                String[] p = lines.get(i).split("\\|", -1);
+                if (p.length != 6) {
+                    throw new IOException("Dữ liệu tài khoản lỗi tại data/users.txt, dòng " + (i + 1) + ".");
+                }
                 try {
                     User user = new User(dec(p[0]), p[1], p[2], dec(p[3]),
                             Role.valueOf(p[4]), AccountStatus.valueOf(p[5]));
                     users.put(user.getUsername().toLowerCase(Locale.ROOT), user);
-                } catch (RuntimeException ignored) {}
+                } catch (RuntimeException ex) {
+                    throw new IOException("Không thể đọc tài khoản tại data/users.txt, dòng " + (i + 1) + ".", ex);
+                }
             }
             if (users.isEmpty()) {
                 throw new IOException("data/users.txt tồn tại nhưng không có tài khoản hợp lệ. "
@@ -131,17 +136,22 @@ public final class DataStore {
 
     private void loadBookings() throws IOException {
         if (Files.exists(BOOKINGS_FILE)) {
-            for (String line : Files.readAllLines(BOOKINGS_FILE, StandardCharsets.UTF_8)) {
+            List<String> lines = Files.readAllLines(BOOKINGS_FILE, StandardCharsets.UTF_8);
+            for (int i = 0; i < lines.size(); i++) {
                 try {
-                    String[] p = line.split("\\|", -1);
-                    if (p.length != 13) continue;
+                    String[] p = lines.get(i).split("\\|", -1);
+                    if (p.length != 13) {
+                        throw new IllegalArgumentException("Sai số trường dữ liệu");
+                    }
                     Booking b = new Booking(dec(p[0]), dec(p[1]), dec(p[2]), dec(p[3]), dec(p[4]),
                             Integer.parseInt(p[5]), LocalDate.parse(p[6]), LocalDate.parse(p[7]),
                             p[8].isBlank() ? List.of() : Arrays.asList(p[8].split(",")),
                             Long.parseLong(p[9]), Long.parseLong(p[10]), BookingStatus.valueOf(p[11]),
                             LocalDateTime.parse(p[12]));
                     bookings.put(b.getId(), b);
-                } catch (RuntimeException ignored) {}
+                } catch (RuntimeException ex) {
+                    throw new IOException("Dữ liệu đặt phòng lỗi tại data/bookings.txt, dòng " + (i + 1) + ".", ex);
+                }
             }
             return;
         }
@@ -177,9 +187,17 @@ public final class DataStore {
 
     private void loadPayments() throws IOException {
         if (!Files.exists(PAYMENTS_FILE)) return;
-        for (String line : Files.readAllLines(PAYMENTS_FILE, StandardCharsets.UTF_8)) {
-            String[] p = line.split("\\|", 2);
-            if (p.length == 2) payments.put(dec(p[0]), p[1]);
+        List<String> lines = Files.readAllLines(PAYMENTS_FILE, StandardCharsets.UTF_8);
+        for (int i = 0; i < lines.size(); i++) {
+            String[] p = lines.get(i).split("\\|", 2);
+            if (p.length != 2) {
+                throw new IOException("Dữ liệu thanh toán lỗi tại data/payments.txt, dòng " + (i + 1) + ".");
+            }
+            try {
+                payments.put(dec(p[0]), p[1]);
+            } catch (RuntimeException ex) {
+                throw new IOException("Không thể đọc thanh toán tại data/payments.txt, dòng " + (i + 1) + ".", ex);
+            }
         }
     }
 
