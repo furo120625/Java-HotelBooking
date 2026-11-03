@@ -9,6 +9,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.Base64;
+import java.security.SecureRandom;
 
 public final class DataStore {
     private static final Path DATA_DIR = Path.of("data");
@@ -26,6 +27,7 @@ public final class DataStore {
         Files.createDirectories(DATA_DIR);
         initializeRooms();
         loadUsers();
+        bootstrapFirstAdminIfNeeded();
         loadBookings();
         loadPayments();
         expireOldPendingPayments();
@@ -59,14 +61,23 @@ public final class DataStore {
 
     private void loadUsers() throws IOException {
         if (Files.exists(USERS_FILE)) {
-            for (String line : Files.readAllLines(USERS_FILE, StandardCharsets.UTF_8)) {
-                String[] p = line.split("\\|", -1);
-                if (p.length != 6) continue;
+            List<String> lines = Files.readAllLines(USERS_FILE, StandardCharsets.UTF_8);
+            for (int i = 0; i < lines.size(); i++) {
+                String[] p = lines.get(i).split("\\|", -1);
+                if (p.length != 6) {
+                    throw new IOException("Dữ liệu tài khoản lỗi tại data/users.txt, dòng " + (i + 1) + ".");
+                }
                 try {
                     User user = new User(dec(p[0]), p[1], p[2], dec(p[3]),
                             Role.valueOf(p[4]), AccountStatus.valueOf(p[5]));
                     users.put(user.getUsername().toLowerCase(Locale.ROOT), user);
-                } catch (RuntimeException ignored) {}
+                } catch (RuntimeException ex) {
+                    throw new IOException("Không thể đọc tài khoản tại data/users.txt, dòng " + (i + 1) + ".", ex);
+                }
+            }
+            if (users.isEmpty()) {
+                throw new IOException("data/users.txt tồn tại nhưng không có tài khoản hợp lệ. "
+                        + "Hãy sao lưu và kiểm tra file này trước khi chạy lại.");
             }
             return;
         }
@@ -89,19 +100,58 @@ public final class DataStore {
         saveUsers();
     }
 
+    private void bootstrapFirstAdminIfNeeded() throws IOException {
+        // A new installation or a legacy data set without an administrator
+        // needs a bootstrap account. Never promote a public registration to ADMIN.
+        boolean hasAdmin = users.values().stream().anyMatch(u -> u.getRole() == Role.ADMIN);
+        if (hasAdmin) return;
+
+        byte[] random = new byte[24];
+        new SecureRandom().nextBytes(random);
+        String initialPassword = Base64.getUrlEncoder().withoutPadding().encodeToString(random);
+        String salt = PasswordUtil.newSalt();
+        char[] initialPasswordChars = initialPassword.toCharArray();
+        String initialHash;
+        try {
+            initialHash = PasswordUtil.hash(initialPasswordChars, salt);
+        } finally {
+            Arrays.fill(initialPasswordChars, (char) 0);
+        }
+        User admin = new User("admin", salt, initialHash,
+                "", Role.ADMIN, AccountStatus.ACTIVE);
+        users.put("admin", admin);
+
+        Path credentials = DATA_DIR.resolve("INITIAL_ADMIN_CREDENTIALS.txt");
+        Files.writeString(credentials,
+                "Tài khoản quản trị ban đầu\n"
+                + "Username: admin\n"
+                + "Password: " + initialPassword + "\n"
+                + "Hãy đăng nhập và đổi mật khẩu ngay sau lần chạy đầu tiên.\n",
+                StandardCharsets.UTF_8, StandardOpenOption.CREATE,
+                StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE);
+        System.out.println("Đã tạo tài khoản Admin ban đầu. Xem thông tin tại: "
+                + credentials.toAbsolutePath());
+        saveUsers();
+    }
+
     private void loadBookings() throws IOException {
         if (Files.exists(BOOKINGS_FILE)) {
-            for (String line : Files.readAllLines(BOOKINGS_FILE, StandardCharsets.UTF_8)) {
+            List<String> lines = Files.readAllLines(BOOKINGS_FILE, StandardCharsets.UTF_8);
+            for (int i = 0; i < lines.size(); i++) {
                 try {
-                    String[] p = line.split("\\|", -1);
-                    if (p.length != 13) continue;
+                    String[] p = lines.get(i).split("\\|", -1);
+                    if (p.length != 13) {
+                        throw new IllegalArgumentException("Sai số trường dữ liệu");
+                    }
                     Booking b = new Booking(dec(p[0]), dec(p[1]), dec(p[2]), dec(p[3]), dec(p[4]),
                             Integer.parseInt(p[5]), LocalDate.parse(p[6]), LocalDate.parse(p[7]),
                             p[8].isBlank() ? List.of() : Arrays.asList(p[8].split(",")),
                             Long.parseLong(p[9]), Long.parseLong(p[10]), BookingStatus.valueOf(p[11]),
                             LocalDateTime.parse(p[12]));
                     bookings.put(b.getId(), b);
-                } catch (RuntimeException ignored) {}
+                } catch (RuntimeException ex) {
+                    throw new IOException("Dữ liệu đặt phòng lỗi tại data/bookings.txt, dòng " + (i + 1) + ".", ex);
+                }
             }
             return;
         }
@@ -137,9 +187,17 @@ public final class DataStore {
 
     private void loadPayments() throws IOException {
         if (!Files.exists(PAYMENTS_FILE)) return;
-        for (String line : Files.readAllLines(PAYMENTS_FILE, StandardCharsets.UTF_8)) {
-            String[] p = line.split("\\|", 2);
-            if (p.length == 2) payments.put(dec(p[0]), p[1]);
+        List<String> lines = Files.readAllLines(PAYMENTS_FILE, StandardCharsets.UTF_8);
+        for (int i = 0; i < lines.size(); i++) {
+            String[] p = lines.get(i).split("\\|", 2);
+            if (p.length != 2) {
+                throw new IOException("Dữ liệu thanh toán lỗi tại data/payments.txt, dòng " + (i + 1) + ".");
+            }
+            try {
+                payments.put(dec(p[0]), p[1]);
+            } catch (RuntimeException ex) {
+                throw new IOException("Không thể đọc thanh toán tại data/payments.txt, dòng " + (i + 1) + ".", ex);
+            }
         }
     }
 
@@ -193,10 +251,16 @@ public final class DataStore {
         for (Booking b : bookings.values()) {
             if (b.getStatus() == BookingStatus.PENDING_PAYMENT && b.getCreatedAt().isBefore(cutoff)) {
                 b.setStatus(BookingStatus.EXPIRED);
+                if ("PENDING".equals(payments.get(b.getId()))) {
+                    payments.put(b.getId(), "EXPIRED");
+                }
                 changed = true;
             }
         }
-        if (changed) saveBookings();
+        if (changed) {
+            saveBookings();
+            savePayments();
+        }
     }
 
     private static void writeAtomically(Path path, List<String> lines) throws IOException {

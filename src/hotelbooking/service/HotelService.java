@@ -125,6 +125,7 @@ public final class HotelService {
     }
 
     public List<Booking> getBookings(User actor) {
+        requireActive(actor);
         expirePending();
         return data.bookings().values().stream()
                 .filter(b -> actor.getRole() != Role.GUEST || b.getCreatedBy().equalsIgnoreCase(actor.getUsername()))
@@ -134,6 +135,7 @@ public final class HotelService {
 
     public void confirmDeposit(User actor, String bookingId, String reference) throws IOException {
         requireStaffOrAdmin(actor);
+        expirePending();
         Booking booking = requireBooking(bookingId);
         if (booking.getStatus() != BookingStatus.PENDING_PAYMENT) {
             throw new IllegalArgumentException("Lượt đặt không ở trạng thái chờ thanh toán.");
@@ -149,6 +151,7 @@ public final class HotelService {
     }
 
     public void cancelBooking(User actor, String bookingId) throws IOException {
+        requireActive(actor);
         Booking booking = requireBooking(bookingId);
         boolean privileged = actor.getRole() == Role.ADMIN || actor.getRole() == Role.STAFF;
         if (!privileged && !booking.getCreatedBy().equalsIgnoreCase(actor.getUsername())) {
@@ -247,7 +250,8 @@ public final class HotelService {
         data.audit(actor.getUsername(), "UPDATE_ROOM_PRICE", roomId + " -> " + price);
     }
 
-    public Map<String, String> getPaymentStates() {
+    public Map<String, String> getPaymentStates(User actor) {
+        requireStaffOrAdmin(actor);
         return Collections.unmodifiableMap(data.payments());
     }
 
@@ -257,12 +261,19 @@ public final class HotelService {
         for (Booking b : data.bookings().values()) {
             if (b.getStatus() == BookingStatus.PENDING_PAYMENT && b.getCreatedAt().isBefore(cutoff)) {
                 b.setStatus(BookingStatus.EXPIRED);
+                if ("PENDING".equals(data.payments().get(b.getId()))) {
+                    data.payments().put(b.getId(), "EXPIRED");
+                }
                 changed = true;
             }
         }
         if (changed) {
-            try { data.saveBookings(); }
-            catch (IOException ex) { throw new IllegalStateException(ex); }
+            try {
+                data.saveBookings();
+                data.savePayments();
+            } catch (IOException ex) {
+                throw new IllegalStateException(ex);
+            }
         }
     }
 
@@ -278,9 +289,15 @@ public final class HotelService {
     }
 
     private void requireActive(User actor) {
-        if (actor == null || actor.getStatus() != AccountStatus.ACTIVE
-                || data.users().get(key(actor.getUsername())) == null) {
-            throw new SecurityException("Tài khoản không hợp lệ hoặc đã bị khóa.");
+        if (actor == null) {
+            throw new SecurityException("Phiên đăng nhập không hợp lệ. Vui lòng đăng nhập lại.");
+        }
+        User current = data.users().get(key(actor.getUsername()));
+        if (current == null || current.getStatus() != AccountStatus.ACTIVE) {
+            throw new SecurityException("Tài khoản không tồn tại hoặc đã bị khóa.");
+        }
+        if (current.getRole() != actor.getRole()) {
+            throw new SecurityException("Vai trò tài khoản đã thay đổi. Vui lòng đăng xuất và đăng nhập lại.");
         }
     }
 
