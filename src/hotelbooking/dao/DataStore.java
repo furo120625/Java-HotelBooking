@@ -9,6 +9,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.Base64;
+import java.security.SecureRandom;
 
 public final class DataStore {
     private static final Path DATA_DIR = Path.of("data");
@@ -26,6 +27,7 @@ public final class DataStore {
         Files.createDirectories(DATA_DIR);
         initializeRooms();
         loadUsers();
+        bootstrapFirstAdminIfNeeded();
         loadBookings();
         loadPayments();
         expireOldPendingPayments();
@@ -87,6 +89,33 @@ public final class DataStore {
             }
         }
         saveUsers();
+    }
+
+    private void bootstrapFirstAdminIfNeeded() throws IOException {
+        // A genuinely empty installation needs one administrator to manage roles.
+        // Never promote a public registration to ADMIN.
+        if (!users.isEmpty()) return;
+
+        byte[] random = new byte[24];
+        new SecureRandom().nextBytes(random);
+        String initialPassword = Base64.getUrlEncoder().withoutPadding().encodeToString(random);
+        String salt = PasswordUtil.newSalt();
+        User admin = new User("admin", salt,
+                PasswordUtil.hash(initialPassword.toCharArray(), salt),
+                "", Role.ADMIN, AccountStatus.ACTIVE);
+        users.put("admin", admin);
+        saveUsers();
+
+        Path credentials = DATA_DIR.resolve("INITIAL_ADMIN_CREDENTIALS.txt");
+        Files.writeString(credentials,
+                "Tài khoản quản trị ban đầu\\n"
+                + "Username: admin\\n"
+                + "Password: " + initialPassword + "\\n"
+                + "Hãy đăng nhập và đổi mật khẩu ngay sau lần chạy đầu tiên.\\n",
+                StandardCharsets.UTF_8, StandardOpenOption.CREATE,
+                StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE);
+        System.out.println("Đã tạo tài khoản Admin ban đầu. Xem thông tin tại: "
+                + credentials.toAbsolutePath());
     }
 
     private void loadBookings() throws IOException {
