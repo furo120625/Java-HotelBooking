@@ -5,6 +5,9 @@
 *.tmp
 *.log
 
+# Private payment QR (do not commit personal bank account QR)
+/config/payment-qr.png
+
 # NetBeans local settings
 /nbproject/private/
 
