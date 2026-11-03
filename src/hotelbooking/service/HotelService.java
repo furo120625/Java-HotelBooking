@@ -110,7 +110,7 @@ public final class HotelService {
         if (guestCount > capacity) throw new IllegalArgumentException("Sức chứa đã chọn chỉ tối đa " + capacity + " khách.");
         long nights = java.time.temporal.ChronoUnit.DAYS.between(checkIn, checkOut);
         long total = Math.multiplyExact(pricePerNight, nights);
-        long deposit = (total + 1) / 2;
+        long deposit = total / 2 + total % 2;
         String id = "BM-" + LocalDate.now().format(DateTimeFormatter.BASIC_ISO_DATE)
                 + "-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase(Locale.ROOT);
         Booking booking = new Booking(id, actor.getUsername(), guestName.trim(), cccd.trim(),
@@ -281,6 +281,7 @@ public final class HotelService {
         requireAdmin(actor);
         Room room = data.rooms().get(roomId);
         if (room == null) throw new IllegalArgumentException("Không tìm thấy phòng.");
+        if (price <= 0) throw new IllegalArgumentException("Giá phòng phải lớn hơn 0 VND.");
         room.setPricePerNight(price);
         data.savePrices();
         data.audit(actor.getUsername(), "UPDATE_ROOM_PRICE", roomId + " -> " + price);
