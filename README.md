@@ -1,4 +1,4 @@
-# Java Hotel Booking – Bình Minh
+# Java Hotel Booking - Bình Minh
 
 Ứng dụng quản lý khách sạn desktop bằng Java Swing (NetBeans Ant project).
 
