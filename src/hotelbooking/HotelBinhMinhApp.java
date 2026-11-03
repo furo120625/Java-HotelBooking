@@ -589,6 +589,12 @@
 
                         JTable table = new JTable(model);
                         table.setRowHeight(28);
+                        table.setSelectionMode(
+                            javax.swing.ListSelectionModel.MULTIPLE_INTERVAL_SELECTION
+                        );
+                        table.setSelectionMode(
+                            javax.swing.ListSelectionModel.MULTIPLE_INTERVAL_SELECTION
+                        );
                         table.setFont(new Font("SansSerif", Font.PLAIN, 13));
                         table.getTableHeader().setFont(new Font("SansSerif", Font.BOLD, 13));
                         JScrollPane scrollPane = new JScrollPane(table);
@@ -597,34 +603,270 @@
                         JPanel bottomPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 10));
                         bottomPanel.setBackground(PALE);
 
-                        JButton cancelBtn = solidButton("HUỶ PHÒNG ĐÃ CHỌN");
-                        cancelBtn.setPreferredSize(new Dimension(200, 40));
-                        cancelBtn.addActionListener(e -> {
-                            int selectedRow = table.getSelectedRow();
-                            if (selectedRow == -1) {
-                                JOptionPane.showMessageDialog(this, "Vui lòng chọn dòng phòng cần huỷ trong bảng.");
-                                return;
-                            }
-                            String roomId = (String) table.getValueAt(selectedRow, 0);
-                            int confirm = JOptionPane.showConfirmDialog(this, "Bạn có chắc chắn muốn huỷ phòng " + roomId + " không?", "Xác nhận huỷ phòng", JOptionPane.YES_NO_OPTION);
-                            if (confirm == JOptionPane.YES_OPTION) {
-                                Room room = ROOMS.get(roomId);
-                                if (room != null) {
-                                    room.isBooked = false;
-                                    room.bookedBy = "";
-                                    room.customerName = "";
-                                    room.cccd = "";
-                                    room.phone = "";
-                                    room.numberOfGuests = "1";
-                                    room.checkIn = "";
-                                    room.checkOut = "";
-                                    saveBookingsToFile();
-                                    JOptionPane.showMessageDialog(this, "Đã huỷ phòng " + roomId + " thành công!");
-                                    new HistoryFrame(user).setVisible(true);
-                                    dispose();
-                                }
-                            }
-                        });
+                        
+JButton cancelBtn = solidButton("HUỶ CÁC PHÒNG ĐÃ CHỌN");
+cancelBtn.setPreferredSize(new Dimension(220, 40));
+
+JButton editBtn = solidButton("SỬA THÔNG TIN KHÁCH");
+editBtn.setPreferredSize(new Dimension(220, 40));
+
+editBtn.addActionListener(e -> {
+    int[] selectedRows = table.getSelectedRows();
+
+    if (selectedRows.length == 0) {
+        JOptionPane.showMessageDialog(
+            this,
+            "Vui lòng chọn ít nhất một phòng cần sửa."
+        );
+        return;
+    }
+
+    java.util.List<Room> selectedRooms =
+        new java.util.ArrayList<>();
+
+    for (int row : selectedRows) {
+        int modelRow = table.convertRowIndexToModel(row);
+        String roomId = String.valueOf(
+            model.getValueAt(modelRow, 0)
+        );
+
+        Room room = ROOMS.get(roomId);
+
+        if (room == null || !room.isBooked) {
+            JOptionPane.showMessageDialog(
+                this,
+                "Phòng " + roomId + " không còn được đặt."
+            );
+            return;
+        }
+
+        selectedRooms.add(room);
+    }
+
+    // Các phòng được chọn phải thuộc cùng một lượt đặt.
+    Room first = selectedRooms.get(0);
+
+    for (Room room : selectedRooms) {
+        boolean sameBooking =
+            java.util.Objects.equals(first.bookedBy, room.bookedBy)
+            && java.util.Objects.equals(first.customerName, room.customerName)
+            && java.util.Objects.equals(first.cccd, room.cccd)
+            && java.util.Objects.equals(first.phone, room.phone)
+            && java.util.Objects.equals(first.checkIn, room.checkIn)
+            && java.util.Objects.equals(first.checkOut, room.checkOut);
+
+        if (!sameBooking) {
+            JOptionPane.showMessageDialog(
+                this,
+                "Các phòng được chọn không thuộc cùng một lượt đặt.\n"
+                    + "Vui lòng chỉ chọn các phòng của cùng một khách.",
+                "Không thể sửa",
+                JOptionPane.WARNING_MESSAGE
+            );
+            return;
+        }
+    }
+
+    JTextField nameField = new JTextField(first.customerName);
+    JTextField cccdField = new JTextField(first.cccd);
+    JTextField phoneField = new JTextField(first.phone);
+    JTextField guestsField =
+        new JTextField(first.numberOfGuests);
+
+    JPanel form = new JPanel(new GridLayout(0, 2, 8, 8));
+    form.add(new JLabel("Họ tên khách:"));
+    form.add(nameField);
+    form.add(new JLabel("CCCD:"));
+    form.add(cccdField);
+    form.add(new JLabel("Số điện thoại:"));
+    form.add(phoneField);
+    form.add(new JLabel("Tổng số khách:"));
+    form.add(guestsField);
+
+    int result = JOptionPane.showConfirmDialog(
+        this,
+        form,
+        "Sửa thông tin khách - " + selectedRooms.size() + " phòng",
+        JOptionPane.OK_CANCEL_OPTION,
+        JOptionPane.PLAIN_MESSAGE
+    );
+
+    if (result != JOptionPane.OK_OPTION) {
+        return;
+    }
+
+    String newName = nameField.getText().trim();
+    String newCccd = cccdField.getText().trim();
+    String newPhone = phoneField.getText().trim();
+    String guestsText = guestsField.getText().trim();
+
+    if (newName.isEmpty()
+            || !newCccd.matches("\\d{9,12}")
+            || !newPhone.matches("[0-9+() .-]{9,15}")) {
+        JOptionPane.showMessageDialog(
+            this,
+            "Họ tên không được để trống, CCCD phải có 9 hoặc 12 chữ số "
+                + "và số điện thoại phải hợp lệ."
+        );
+        return;
+    }
+
+    int newGuests;
+
+    try {
+        if (!guestsText.matches("\\d+")) {
+            throw new NumberFormatException();
+        }
+
+        newGuests = Integer.parseInt(guestsText);
+
+        if (newGuests <= 0) {
+            throw new NumberFormatException();
+        }
+    } catch (NumberFormatException ex) {
+        JOptionPane.showMessageDialog(
+            this,
+            "Số khách phải là số nguyên dương."
+        );
+        return;
+    }
+
+    int totalCapacity = 0;
+
+    for (Room room : selectedRooms) {
+        totalCapacity += room.maxGuests;
+    }
+
+    if (newGuests > totalCapacity) {
+        JOptionPane.showMessageDialog(
+            this,
+            "Sức chứa của " + selectedRooms.size()
+                + " phòng đã chọn chỉ là " + totalCapacity + " người.",
+            "Vượt quá sức chứa",
+            JOptionPane.WARNING_MESSAGE
+        );
+        return;
+    }
+
+    // Cập nhật tất cả các phòng đã chọn.
+    for (Room room : selectedRooms) {
+        room.customerName = newName;
+        room.cccd = newCccd;
+        room.phone = newPhone;
+        room.numberOfGuests = String.valueOf(newGuests);
+    }
+
+    saveBookingsToFile();
+
+    JOptionPane.showMessageDialog(
+        this,
+        "Đã cập nhật thông tin khách cho "
+            + selectedRooms.size() + " phòng."
+    );
+
+    new HistoryFrame(user).setVisible(true);
+    dispose();
+});
+
+bottomPanel.add(editBtn);
+
+
+cancelBtn.addActionListener(e -> {
+    int[] selectedRows = table.getSelectedRows();
+
+    if (selectedRows.length == 0) {
+        JOptionPane.showMessageDialog(
+            this,
+            "Vui lòng chọn ít nhất một phòng cần hủy."
+        );
+        return;
+    }
+
+    // Lấy danh sách phòng được chọn.
+    Set<String> roomIdsToCancel = new LinkedHashSet<>();
+
+    for (int row : selectedRows) {
+        int modelRow = table.convertRowIndexToModel(row);
+        roomIdsToCancel.add(
+            String.valueOf(model.getValueAt(modelRow, 0))
+        );
+    }
+
+    int confirm = JOptionPane.showConfirmDialog(
+        this,
+        "Ông có chắc muốn hủy " + roomIdsToCancel.size()
+            + " phòng đã chọn không?",
+        "Xác nhận hủy phòng",
+        JOptionPane.YES_NO_OPTION,
+        JOptionPane.WARNING_MESSAGE
+    );
+
+    if (confirm != JOptionPane.YES_OPTION) {
+        return;
+    }
+
+    // Lưu thông tin các lượt đặt bị ảnh hưởng trước khi xóa.
+    java.util.List<Room> affectedBookings =
+        new java.util.ArrayList<>();
+
+    for (String roomId : roomIdsToCancel) {
+        Room room = ROOMS.get(roomId);
+
+        if (room == null || !room.isBooked) {
+            continue;
+        }
+
+        boolean alreadyAdded = false;
+
+        for (Room booking : affectedBookings) {
+            if (sameBooking(booking, room)) {
+                alreadyAdded = true;
+                break;
+            }
+        }
+
+        if (!alreadyAdded) {
+            affectedBookings.add(copyBooking(room));
+        }
+    }
+
+    // Hủy tất cả phòng đã chọn.
+    for (String roomId : roomIdsToCancel) {
+        Room room = ROOMS.get(roomId);
+
+        if (room == null) {
+            continue;
+        }
+
+        room.isBooked = false;
+        room.bookedBy = "";
+        room.customerName = "";
+        room.cccd = "";
+        room.phone = "";
+        room.numberOfGuests = "1";
+        room.checkIn = "";
+        room.checkOut = "";
+    }
+
+    // Điều chỉnh số khách của các phòng còn lại.
+    for (Room booking : affectedBookings) {
+        reduceGuestsForRemainingRooms(booking);
+    }
+
+    saveBookingsToFile();
+
+    JOptionPane.showMessageDialog(
+        this,
+        "Đã hủy " + roomIdsToCancel.size()
+            + " phòng và cập nhật số khách cho các phòng còn lại.",
+        "Hủy phòng thành công",
+        JOptionPane.INFORMATION_MESSAGE
+    );
+
+    new HistoryFrame(user).setVisible(true);
+    dispose();
+});
+
 
                         JButton backBtn = outlineButton("Quay lại");
                         backBtn.setPreferredSize(new Dimension(130, 40));
@@ -640,6 +882,76 @@
                         root.add(center, BorderLayout.CENTER);
                         setContentPane(root);
                     }
+                    
+private boolean sameBooking(Room a, Room b) {
+    return java.util.Objects.equals(a.bookedBy, b.bookedBy)
+        && java.util.Objects.equals(a.customerName, b.customerName)
+        && java.util.Objects.equals(a.cccd, b.cccd)
+        && java.util.Objects.equals(a.phone, b.phone)
+        && java.util.Objects.equals(a.checkIn, b.checkIn)
+        && java.util.Objects.equals(a.checkOut, b.checkOut);
+}
+
+private Room copyBooking(Room source) {
+    Room copy = new Room(
+        source.id,
+        source.floor,
+        source.type,
+        source.price,
+        source.maxGuests
+    );
+
+    copy.isBooked = source.isBooked;
+    copy.bookedBy = source.bookedBy;
+    copy.customerName = source.customerName;
+    copy.cccd = source.cccd;
+    copy.phone = source.phone;
+    copy.checkIn = source.checkIn;
+    copy.checkOut = source.checkOut;
+    copy.numberOfGuests = source.numberOfGuests;
+
+    return copy;
+}
+
+private void reduceGuestsForRemainingRooms(Room booking) {
+    int totalCapacity = 0;
+    int originalGuestCount;
+
+    try {
+        originalGuestCount =
+            Integer.parseInt(booking.numberOfGuests);
+    } catch (NumberFormatException e) {
+        originalGuestCount = 1;
+    }
+
+    // Tính sức chứa của các phòng còn được đặt
+    // trong cùng một lượt đặt.
+    for (Room room : ROOMS.values()) {
+        if (room.isBooked && sameBooking(booking, room)) {
+            totalCapacity += room.maxGuests;
+        }
+    }
+
+    // Nếu không còn phòng nào trong lượt đặt này,
+    // không cần cập nhật số khách.
+    if (totalCapacity == 0) {
+        return;
+    }
+
+    int adjustedGuestCount = Math.min(
+        originalGuestCount,
+        totalCapacity
+    );
+
+    // Đồng bộ số khách trên tất cả phòng còn lại.
+    for (Room room : ROOMS.values()) {
+        if (room.isBooked && sameBooking(booking, room)) {
+            room.numberOfGuests =
+                String.valueOf(adjustedGuestCount);
+        }
+    }
+}
+
                 }
 
                 static class BookingFrame extends JFrame {
@@ -682,10 +994,10 @@
                         leftCard.add(Box.createVerticalStrut(6));  addField(leftCard, "Số điện thoại liên hệ", phone);
                         leftCard.add(Box.createVerticalStrut(6));  addField(leftCard, "Số lượng khách (người)", guests);
                         leftCard.add(Box.createVerticalStrut(6));
-                        addField(leftCard, "Ngày nhận phòng (dd/MM/yyyy)", checkInPicker);
+                        addField(leftCard, "Ngày nhận phòng (Ngày/Tháng/Năm)", checkInPicker);
 
                         leftCard.add(Box.createVerticalStrut(6));
-                        addField(leftCard, "Ngày trả phòng (dd/MM/yyyy)", checkOutPicker);
+                        addField(leftCard, "Ngày trả phòng (Ngày/Tháng/Năm)", checkOutPicker);
                         
                         leftCard.add(Box.createVerticalStrut(10));
                         leftCard.add(label("Phòng đang chọn:", 13, true, TEXT));
@@ -815,123 +1127,160 @@
                         roomGridPanel.repaint();
                     }
 
-                    void submit(String user) {
-                        String customerName = name.getText().trim();
-                        String customerCccd = cccd.getText().trim();
-                        String customerPhone = phone.getText().trim();
-                        String numGuests = guests.getText().trim();
+ 
+void submit(String user) {
+    String customerName = name.getText().trim();
+    String customerCccd = cccd.getText().trim();
+    String customerPhone = phone.getText().trim();
+    String numGuests = guests.getText().trim();
 
-                        if (customerName.isEmpty() || customerCccd.isEmpty() || customerPhone.isEmpty() || numGuests.isEmpty()) {
-                            JOptionPane.showMessageDialog(this, "Vui lòng nhập đầy đủ thông tin, CCCD, SĐT và số lượng khách."); return;
-                        }
-                        if (!customerCccd.matches("\\d{9,12}")) {
-                            JOptionPane.showMessageDialog(this, "Số CCCD không hợp lệ (Phải gồm 9 hoặc 12 chữ số)."); return;
-                        }
-                        if (!customerPhone.matches("[0-9+() .-]{9,15}")) {
-                            JOptionPane.showMessageDialog(this, "Số điện thoại chưa đúng định dạng."); return;
-                        }
-                        if (!numGuests.matches("\\d+") || Integer.parseInt(numGuests) <= 0) {
-                            JOptionPane.showMessageDialog(this, "Số lượng khách phải là số nguyên dương."); return;
-                        }
-                        if (selectedRoomIds.isEmpty()) {
-                            JOptionPane.showMessageDialog(
-                                this,
-                                "Vui lòng chọn ít nhất một phòng trong sơ đồ khách sạn."
-                            );
-                            return;
-                        }
-
-                        int guestCount = Integer.parseInt(numGuests);
-
-                        // Kiểm tra tất cả phòng trước khi đặt.
-                        for (String roomId : selectedRoomIds) {
-                            Room room = ROOMS.get(roomId);
-
-                            if (room == null || room.isBooked) {
-                                JOptionPane.showMessageDialog(
-                                    this,
-                                    "Phòng " + roomId
-                                        + " không tồn tại hoặc đã được đặt."
-                                );
-                                return;
-                            }
-
-                            if (guestCount > room.maxGuests) {
-                                JOptionPane.showMessageDialog(
-                                    this,
-                                    "Phòng " + room.id + " (" + room.type
-                                        + ") chỉ cho phép tối đa "
-                                        + room.maxGuests + " người.",
-                                    "Vượt quá giới hạn người",
-                                    JOptionPane.WARNING_MESSAGE
-                                );
-                                return;
-                            }
-                        }
-
-                        // Lấy giá trị ngày từ JSpinner
-            java.time.LocalDate in = checkInPicker.getDate();
-            java.time.LocalDate out = checkOutPicker.getDate();
-
-            if (in == null) {
-                JOptionPane.showMessageDialog(
-                    this,
-                    "Ngày nhận phòng không hợp lệ. Vui lòng nhập ngày/tháng/năm."
-                );
-                return;
-            }
-
-            if (out == null) {
-                JOptionPane.showMessageDialog(
-                    this,
-                    "Ngày trả phòng không hợp lệ. Vui lòng nhập ngày/tháng/năm."
-                );
-                return;
-            }
-
-            if (!out.isAfter(in)) {
-                JOptionPane.showMessageDialog(
-                    this,
-                    "Ngày trả phòng phải sau ngày nhận phòng."
-                );
-                return;
-            }
-
-            if (in.isBefore(java.time.LocalDate.now())) {
-                JOptionPane.showMessageDialog(
-                    this,
-                    "Ngày nhận phòng không được ở quá khứ."
-                );
-                return;
-            }
-            // Đặt tất cả phòng đã chọn.
-        for (String roomId : selectedRoomIds) {
-            Room room = ROOMS.get(roomId);
-
-            room.isBooked = true;
-            room.bookedBy = user;
-            room.customerName = customerName;
-            room.cccd = customerCccd;
-            room.phone = customerPhone;
-            room.numberOfGuests = numGuests;
-            room.checkIn = in.toString();
-            room.checkOut = out.toString();
-        }
-
-        // Lưu thông tin đặt phòng.
-        saveBookingsToFile();
-
+    // 1. Kiểm tra thông tin bắt buộc.
+    if (customerName.isEmpty()
+            || customerCccd.isEmpty()
+            || customerPhone.isEmpty()
+            || numGuests.isEmpty()) {
         JOptionPane.showMessageDialog(
             this,
-            "Đặt thành công " + selectedRoomIds.size()
-                + " phòng: " + String.join(", ", selectedRoomIds),
-            "Đặt phòng thành công",
-            JOptionPane.INFORMATION_MESSAGE
+            "Vui lòng nhập đầy đủ họ tên, CCCD, SĐT và số lượng khách."
         );
-
-        new HomeFrame(user).setVisible(true);
-        dispose();
-
-            }
-        }
+        return;
     }
+
+    // 2. Kiểm tra CCCD.
+    if (!customerCccd.matches("\\d{9,12}")) {
+        JOptionPane.showMessageDialog(
+            this,
+            "Số CCCD không hợp lệ (phải gồm 9 hoặc 12 chữ số)."
+        );
+        return;
+    }
+
+    // 3. Kiểm tra số điện thoại.
+    if (!customerPhone.matches("[0-9+() .-]{9,15}")) {
+        JOptionPane.showMessageDialog(
+            this,
+            "Số điện thoại chưa đúng định dạng."
+        );
+        return;
+    }
+
+    // 4. Kiểm tra số lượng khách.
+    int guestCount;
+
+    try {
+        if (!numGuests.matches("\\d+")) {
+            throw new NumberFormatException();
+        }
+
+        guestCount = Integer.parseInt(numGuests);
+
+        if (guestCount <= 0) {
+            throw new NumberFormatException();
+        }
+    } catch (NumberFormatException e) {
+        JOptionPane.showMessageDialog(
+            this,
+            "Số lượng khách phải là số nguyên dương hợp lệ."
+        );
+        return;
+    }
+
+    // 5. Kiểm tra đã chọn phòng chưa.
+    if (selectedRoomIds.isEmpty()) {
+        JOptionPane.showMessageDialog(
+            this,
+            "Vui lòng chọn ít nhất một phòng."
+        );
+        return;
+    }
+
+    // 6. Kiểm tra phòng và tính tổng sức chứa.
+    int totalCapacity = 0;
+
+    for (String roomId : selectedRoomIds) {
+        Room room = ROOMS.get(roomId);
+
+        if (room == null || room.isBooked) {
+            JOptionPane.showMessageDialog(
+                this,
+                "Phòng " + roomId
+                    + " không tồn tại hoặc đã được đặt."
+            );
+            return;
+        }
+
+        totalCapacity += room.maxGuests;
+    }
+
+    // 7. Số khách không được vượt tổng sức chứa.
+    if (guestCount > totalCapacity) {
+        JOptionPane.showMessageDialog(
+            this,
+            "Bạn đã chọn " + selectedRoomIds.size()
+                + " phòng, có tổng sức chứa " + totalCapacity
+                + " người, nhưng nhập " + guestCount
+                + " người.\nVui lòng chọn thêm phòng hoặc giảm số khách.",
+            "Vượt quá sức chứa",
+            JOptionPane.WARNING_MESSAGE
+        );
+        return;
+    }
+
+    // 8. Kiểm tra ngày nhận và trả phòng.
+    java.time.LocalDate in = checkInPicker.getDate();
+    java.time.LocalDate out = checkOutPicker.getDate();
+
+    if (in == null || out == null) {
+        JOptionPane.showMessageDialog(
+            this,
+            "Ngày nhận phòng hoặc ngày trả phòng không hợp lệ."
+        );
+        return;
+    }
+
+    if (in.isBefore(java.time.LocalDate.now())) {
+        JOptionPane.showMessageDialog(
+            this,
+            "Ngày nhận phòng không được ở quá khứ."
+        );
+        return;
+    }
+
+    if (!out.isAfter(in)) {
+        JOptionPane.showMessageDialog(
+            this,
+            "Ngày trả phòng phải sau ngày nhận phòng."
+        );
+        return;
+    }
+
+    // 9. Tất cả dữ liệu hợp lệ: cập nhật các phòng đã chọn.
+    for (String roomId : selectedRoomIds) {
+        Room room = ROOMS.get(roomId);
+
+        room.isBooked = true;
+        room.bookedBy = user;
+        room.customerName = customerName;
+        room.cccd = customerCccd;
+        room.phone = customerPhone;
+        room.numberOfGuests = numGuests;
+        room.checkIn = in.toString();
+        room.checkOut = out.toString();
+    }
+
+    // 10. Lưu dữ liệu và thông báo thành công.
+    saveBookingsToFile();
+
+    JOptionPane.showMessageDialog(
+        this,
+        "Đặt thành công " + selectedRoomIds.size()
+            + " phòng: " + String.join(", ", selectedRoomIds),
+        "Đặt phòng thành công",
+        JOptionPane.INFORMATION_MESSAGE
+    );
+
+    new HomeFrame(user).setVisible(true);
+    dispose();
+}
+           }
+            }
