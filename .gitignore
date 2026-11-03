@@ -7,3 +7,6 @@
 
 # NetBeans local settings
 /nbproject/private/
+
+/build/
+/dist/
