@@ -1,0 +1,12 @@
+# Runtime data and personally identifiable information
+/data/
+/TK.txt
+/DP.txt
+*.tmp
+*.log
+
+# NetBeans local settings
+/nbproject/private/
+
+/build/
+/dist/
