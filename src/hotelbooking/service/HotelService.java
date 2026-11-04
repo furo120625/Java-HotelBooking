@@ -6,6 +6,7 @@ import hotelbooking.util.PasswordUtil;
 import java.io.IOException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -212,8 +213,8 @@ public final class HotelService {
         requireStaffOrAdmin(actor);
         Booking b = requireBooking(bookingId);
         if (b.getStatus() != BookingStatus.CONFIRMED) throw new IllegalArgumentException("Chỉ nhận phòng với lượt đặt đã xác nhận.");
-        if (LocalDate.now().isBefore(b.getCheckIn())) throw new IllegalArgumentException("Chưa đến ngày nhận phòng.");
-        if (!LocalDate.now().isBefore(b.getCheckOut().plusDays(1))) throw new IllegalArgumentException("Đã hết thời gian nhận phòng của Booking.");
+        if (LocalDateTime.now().isBefore(b.getCheckIn().atTime(13, 0))) throw new IllegalArgumentException("Giờ nhận phòng là 13:00 ngày " + b.getCheckIn() + ".");
+        if (!LocalDateTime.now().isBefore(b.getCheckOut().atTime(11, 0))) throw new IllegalArgumentException("Đã hết thời gian nhận phòng của Booking.");
         if (b.getCheckInCodeHash().isBlank()
                 || !MessageDigest.isEqual(hashCheckInCode(suppliedCode).getBytes(StandardCharsets.US_ASCII),
                         b.getCheckInCodeHash().getBytes(StandardCharsets.US_ASCII))) {
@@ -230,9 +231,9 @@ public final class HotelService {
         if (b.getStatus() != BookingStatus.CHECKED_IN) {
             throw new IllegalArgumentException("Lượt đặt chưa check-in.");
         }
-        if (LocalDate.now().isBefore(b.getCheckOut())) {
-            throw new IllegalArgumentException("Chưa đến ngày trả phòng (" + b.getCheckOut()
-                    + "). Không thể check-out sớm vì lịch phòng đã được giữ đến ngày này.");
+        if (LocalDateTime.now().isBefore(b.getCheckOut().atTime(11, 0))) {
+            throw new IllegalArgumentException("Giờ trả phòng là 11:00 ngày " + b.getCheckOut()
+                    + ". Không thể check-out trước thời điểm này.");
         }
         b.setStatus(BookingStatus.CHECKED_OUT);
         data.saveBookings();
