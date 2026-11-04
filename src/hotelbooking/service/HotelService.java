@@ -231,10 +231,6 @@ public final class HotelService {
         if (b.getStatus() != BookingStatus.CHECKED_IN) {
             throw new IllegalArgumentException("Lượt đặt chưa check-in.");
         }
-        if (LocalDateTime.now().isBefore(b.getCheckOut().atTime(11, 0))) {
-            throw new IllegalArgumentException("Giờ trả phòng là 11:00 ngày " + b.getCheckOut()
-                    + ". Không thể check-out trước thời điểm này.");
-        }
         b.setStatus(BookingStatus.CHECKED_OUT);
         data.saveBookings();
         data.audit(actor.getUsername(), "CHECK_OUT", bookingId);
