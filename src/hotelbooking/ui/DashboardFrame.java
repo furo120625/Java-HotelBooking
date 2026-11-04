@@ -114,8 +114,11 @@ public final class DashboardFrame extends JFrame {
         cancel.addActionListener(e -> cancelSelected());
         if (user.getRole() == Role.GUEST) {
             JButton reopenPayment = new JButton("Mở QR thanh toán");
+            JButton showCheckInCode = new JButton("Mở mã Check-in");
             actions.add(reopenPayment);
+            actions.add(showCheckInCode);
             reopenPayment.addActionListener(e -> reopenPaymentSelected());
+            showCheckInCode.addActionListener(e -> showCheckInCodeSelected());
         }
         if (user.getRole() == Role.ADMIN || user.getRole() == Role.STAFF) {
             JButton confirm = new JButton("Xác nhận đã nhận cọc");
@@ -232,6 +235,20 @@ public final class DashboardFrame extends JFrame {
         return String.valueOf(bookingTable.getValueAt(bookingTable.convertRowIndexToModel(row), 0));
     }
 
+    private void showCheckInCodeSelected() {
+        String id = selectedBookingId();
+        if (id == null) return;
+        try {
+            String code = service.getCheckInCodeForGuest(user, id);
+            JOptionPane.showMessageDialog(this,
+                    "MÃ CHECK-IN CỦA BẠN\n\n" + code
+                    + "\n\nHãy giữ mã này và xuất trình cho nhân viên khi nhận phòng.",
+                    "Mã Check-in", JOptionPane.INFORMATION_MESSAGE);
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, ex.getMessage(), "Không thể mở mã Check-in", JOptionPane.WARNING_MESSAGE);
+        }
+    }
+
     private void reopenPaymentSelected() {
         String id = selectedBookingId();
         if (id == null) return;
@@ -309,7 +326,7 @@ public final class DashboardFrame extends JFrame {
             if (checkIn) {
                 JTextField code = new JTextField();
                 JPanel panel = new JPanel(new GridLayout(0, 1, 6, 6));
-                panel.add(new JLabel("Nhập mã bí mật do Guest cung cấp (10 ký tự):"));
+                panel.add(new JLabel("Nhập mã Check-in do Guest cung cấp (10 ký tự):"));
                 panel.add(code);
                 if (JOptionPane.showConfirmDialog(this, panel, "Xác thực mã check-in: " + id,
                         JOptionPane.OK_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE) != JOptionPane.OK_OPTION) return;

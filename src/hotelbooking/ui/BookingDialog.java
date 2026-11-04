@@ -118,9 +118,9 @@ final class BookingDialog extends JDialog {
                     "Đã tạo lượt đặt " + booking.getId() + ". Tiền cọc cần thanh toán: "
                     + String.format("%,d đ", booking.getDepositAmount())
                     + "\nLượt đặt đang ở trạng thái PENDING_PAYMENT."
-                    + "\n\nMÃ BÍ MẬT CHECK-IN: " + booking.getOneTimeCheckInCode()
+                    + "\n\nMÃ CHECK-IN: " + booking.getCheckInCode()
                     + "\nHãy lưu mã này. Chỉ cung cấp cho nhân viên khi nhận phòng."
-                    + "\nMã chỉ được chấp nhận sau khi Booking đã xác nhận thanh toán.");
+                    + "\nMã được yêu cầu khi Guest làm thủ tục nhận phòng.");
             dispose();
             onCreated.accept(booking);
         } catch (RuntimeException | java.io.IOException ex) {
