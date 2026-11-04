@@ -14,6 +14,7 @@ public final class UiStyle {
     public static final Color SEA_BACKGROUND = new Color(244, 249, 252);
     public static final Color SURFACE = Color.WHITE;
     public static final Color TEXT = new Color(30, 48, 64);
+    public static final Color MUTED = new Color(100, 119, 135);
     public static final Color BORDER = new Color(213, 225, 235);
     private static final int RADIUS = 5;
 
