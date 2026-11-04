@@ -113,7 +113,7 @@ public final class LoginFrame extends JFrame {
             }).setVisible(true);
             setVisible(false);
         } finally {
-            java.util.Arrays.fill(secret, '\\0');
+            java.util.Arrays.fill(secret, '\0');
         }
     }
 }
