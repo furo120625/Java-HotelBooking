@@ -15,30 +15,81 @@ public final class LoginFrame extends JFrame {
         setTitle("Khách sạn Bình Minh | Đăng nhập");
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         setMinimumSize(new Dimension(420, 330));
+
+        Dimension screen = Toolkit.getDefaultToolkit().getScreenSize();
+        Dimension windowSize = new Dimension(
+                Math.max(420, screen.width / 2),
+                Math.max(330, screen.height / 2));
+        Dimension cardSize = new Dimension(
+                Math.max(300, screen.width * 3 / 10),
+                Math.max(360, screen.height * 42 / 100));
+
         JPanel root = new JPanel(new GridBagLayout());
         root.setBorder(BorderFactory.createEmptyBorder(24, 28, 24, 28));
-        root.setBackground(new Color(245, 248, 252));
-        JPanel card = new JPanel(new GridLayout(0, 1, 8, 8));
+        root.setBackground(UiStyle.SEA_BACKGROUND);
+
+        JPanel card = new JPanel();
+        card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
         card.setBackground(Color.WHITE);
         card.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new Color(220, 226, 234)),
-                BorderFactory.createEmptyBorder(24, 24, 24, 24)));
+                BorderFactory.createLineBorder(UiStyle.BORDER),
+                BorderFactory.createEmptyBorder(30, 32, 30, 32)));
+        card.setPreferredSize(cardSize);
+
         JLabel title = new JLabel("KHÁCH SẠN BÌNH MINH", SwingConstants.CENTER);
-        title.setFont(title.getFont().deriveFont(Font.BOLD, 21f));
+        title.setFont(title.getFont().deriveFont(Font.BOLD, 25f));
+        title.setAlignmentX(Component.CENTER_ALIGNMENT);
+
         JLabel subtitle = new JLabel("Đăng nhập hệ thống quản lý", SwingConstants.CENTER);
-        card.add(title); card.add(subtitle);
-        card.add(new JLabel("Tên đăng nhập")); card.add(username);
-        card.add(new JLabel("Mật khẩu")); card.add(password);
+        subtitle.setForeground(UiStyle.MUTED);
+        subtitle.setAlignmentX(Component.CENTER_ALIGNMENT);
+
+        JLabel usernameLabel = new JLabel("Tên đăng nhập");
+        JLabel passwordLabel = new JLabel("Mật khẩu");
+        usernameLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        passwordLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        Dimension fieldSize = new Dimension(Integer.MAX_VALUE, 40);
+        username.setMaximumSize(fieldSize);
+        username.setPreferredSize(new Dimension(260, 40));
+        password.setMaximumSize(fieldSize);
+        password.setPreferredSize(new Dimension(260, 40));
+
         JButton login = new JButton("ĐĂNG NHẬP");
         JButton register = new JButton("Tạo tài khoản Guest");
-        card.add(login); card.add(register);
+        login.setAlignmentX(Component.CENTER_ALIGNMENT);
+        register.setAlignmentX(Component.CENTER_ALIGNMENT);
+        Dimension buttonSize = new Dimension(Integer.MAX_VALUE, 42);
+        login.setMaximumSize(buttonSize);
+        register.setMaximumSize(buttonSize);
+        login.setPreferredSize(new Dimension(260, 42));
+        register.setPreferredSize(new Dimension(260, 42));
+
+        card.add(title);
+        card.add(Box.createVerticalStrut(10));
+        card.add(subtitle);
+        card.add(Box.createVerticalStrut(34));
+        card.add(usernameLabel);
+        card.add(Box.createVerticalStrut(9));
+        card.add(username);
+        card.add(Box.createVerticalStrut(20));
+        card.add(passwordLabel);
+        card.add(Box.createVerticalStrut(9));
+        card.add(password);
+        card.add(Box.createVerticalStrut(12));
+        card.add(login);
+        card.add(Box.createVerticalStrut(9));
+        card.add(register);
+
         root.add(card);
         setContentPane(root);
         getRootPane().setDefaultButton(login);
         login.addActionListener(e -> doLogin());
         password.addActionListener(e -> doLogin());
         register.addActionListener(e -> new RegisterDialog(this, service).setVisible(true));
+
         UiStyle.apply(this);
+        setPreferredSize(windowSize);
         pack();
         setLocationRelativeTo(null);
     }
@@ -61,7 +112,7 @@ public final class LoginFrame extends JFrame {
             }).setVisible(true);
             setVisible(false);
         } finally {
-            java.util.Arrays.fill(secret, '\0');
+            java.util.Arrays.fill(secret, '\\0');
         }
     }
 }
