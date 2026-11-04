@@ -19,6 +19,7 @@ public final class Booking {
     private BookingStatus status;
     private final LocalDateTime createdAt;
     private final String checkInCodeHash;
+    private transient String oneTimeCheckInCode;
 
     public Booking(String id, String createdBy, String guestName, String cccd, String phone,
                    int guestCount, LocalDate checkIn, LocalDate checkOut, List<String> roomIds,
@@ -61,6 +62,8 @@ public final class Booking {
     public BookingStatus getStatus() { return status; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public String getCheckInCodeHash() { return checkInCodeHash; }
+    public String getOneTimeCheckInCode() { return oneTimeCheckInCode; }
+    public void setOneTimeCheckInCode(String code) { this.oneTimeCheckInCode = code; }
     public void setStatus(BookingStatus status) { this.status = status; }
     public long getNights() { return java.time.temporal.ChronoUnit.DAYS.between(checkIn, checkOut); }
 }
