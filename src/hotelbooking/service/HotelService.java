@@ -120,8 +120,8 @@ public final class HotelService {
         String checkInCode = generateCheckInCode();
         Booking booking = new Booking(id, actor.getUsername(), guestName.trim(), cccd.trim(),
                 phone.trim(), guestCount, checkIn, checkOut, new ArrayList<>(uniqueRooms),
-                total, deposit, BookingStatus.PENDING_PAYMENT, LocalDateTime.now(), hashCheckInCode(checkInCode));
-        booking.setOneTimeCheckInCode(checkInCode);
+                total, deposit, BookingStatus.PENDING_PAYMENT, LocalDateTime.now(), hashCheckInCode(checkInCode), checkInCode);
+        
         data.bookings().put(id, booking);
         data.payments().put(id, "PENDING");
         data.saveBookings();
@@ -208,6 +208,14 @@ public final class HotelService {
                 bookingId + (paymentState.startsWith("PAID|") ? " | REFUND_REVIEW_REQUIRED" : ""));
     }
 
+    public String getCheckInCodeForGuest(User actor, String bookingId) {
+        if (actor == null || actor.getRole() != Role.GUEST) throw new SecurityException("Chỉ Guest mới được xem mã Check-in.");
+        Booking booking = requireBooking(bookingId);
+        if (!booking.getCreatedBy().equals(actor.getUsername())) throw new SecurityException("Bạn không có quyền xem mã Check-in của Booking này.");
+        if (booking.getCheckInCode().isBlank()) throw new IllegalStateException("Booking cũ chưa có mã Check-in.");
+        return booking.getCheckInCode();
+    }
+
     public void checkIn(User actor, String bookingId, String suppliedCode) throws IOException {
         requireStaffOrAdmin(actor);
         Booking b = requireBooking(bookingId);
@@ -218,7 +226,7 @@ public final class HotelService {
         if (!legacyBooking
                 && !MessageDigest.isEqual(hashCheckInCode(suppliedCode).getBytes(StandardCharsets.US_ASCII),
                         b.getCheckInCodeHash().getBytes(StandardCharsets.US_ASCII))) {
-            throw new SecurityException("Mã check-in không chính xác. Yêu cầu Guest cung cấp mã bí mật của Booking.");
+            throw new SecurityException("Mã Check-in không chính xác. Vui lòng kiểm tra lại mã do Guest cung cấp.");
         }
         b.setStatus(BookingStatus.CHECKED_IN);
         data.saveBookings();
