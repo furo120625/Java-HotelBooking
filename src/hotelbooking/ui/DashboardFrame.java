@@ -192,7 +192,7 @@ public final class DashboardFrame extends JFrame {
         long active = service.getBookings(user).stream()
                 .filter(b -> b.getStatus().blocksAvailability()).count();
         summary.setText("Số lượt đặt đang hoạt động: " + active
-                + "    |    Ngày hệ thống: " + LocalDate.now());
+                + "    |    Ngày hệ thống: " + DateUtil.format(LocalDate.now()));
     }
 
     private void refreshRooms() {
