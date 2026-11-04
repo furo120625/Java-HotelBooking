@@ -241,8 +241,8 @@ public final class DashboardFrame extends JFrame {
         try {
             String code = service.getCheckInCodeForGuest(user, id);
             JOptionPane.showMessageDialog(this,
-                    "MÃ CHECK-IN CỦA BẠN\\n\\n" + code
-                    + "\\n\\nHãy giữ mã này và xuất trình cho nhân viên khi nhận phòng.",
+                    "MÃ CHECK-IN CỦA BẠN\n\n" + code
+                    + "\n\nHãy giữ mã này và xuất trình cho nhân viên khi nhận phòng.",
                     "Mã Check-in", JOptionPane.INFORMATION_MESSAGE);
         } catch (Exception ex) {
             JOptionPane.showMessageDialog(this, ex.getMessage(), "Không thể mở mã Check-in", JOptionPane.WARNING_MESSAGE);
