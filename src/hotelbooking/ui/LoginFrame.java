@@ -16,7 +16,8 @@ public final class LoginFrame extends JFrame {
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         setMinimumSize(new Dimension(420, 330));
 
-        Dimension screen = Toolkit.getDefaultToolkit().getScreenSize();
+        Rectangle usableBounds = GraphicsEnvironment.getLocalGraphicsEnvironment().getMaximumWindowBounds();
+        Dimension screen = usableBounds.getSize();
         Dimension windowSize = new Dimension(
                 Math.max(420, screen.width / 2),
                 Math.max(330, screen.height / 2));
@@ -89,8 +90,8 @@ public final class LoginFrame extends JFrame {
         register.addActionListener(e -> new RegisterDialog(this, service).setVisible(true));
 
         UiStyle.apply(this);
-        setPreferredSize(windowSize);
         pack();
+        setSize(windowSize);
         setLocationRelativeTo(null);
     }
 
