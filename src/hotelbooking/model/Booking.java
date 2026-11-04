@@ -18,10 +18,19 @@ public final class Booking {
     private final long depositAmount;
     private BookingStatus status;
     private final LocalDateTime createdAt;
+    private final String checkInCodeHash;
 
     public Booking(String id, String createdBy, String guestName, String cccd, String phone,
                    int guestCount, LocalDate checkIn, LocalDate checkOut, List<String> roomIds,
                    long totalAmount, long depositAmount, BookingStatus status, LocalDateTime createdAt) {
+        this(id, createdBy, guestName, cccd, phone, guestCount, checkIn, checkOut, roomIds,
+                totalAmount, depositAmount, status, createdAt, "");
+    }
+
+    public Booking(String id, String createdBy, String guestName, String cccd, String phone,
+                   int guestCount, LocalDate checkIn, LocalDate checkOut, List<String> roomIds,
+                   long totalAmount, long depositAmount, BookingStatus status, LocalDateTime createdAt,
+                   String checkInCodeHash) {
         this.id = id;
         this.createdBy = createdBy;
         this.guestName = guestName;
@@ -35,6 +44,7 @@ public final class Booking {
         this.depositAmount = depositAmount;
         this.status = status;
         this.createdAt = createdAt;
+        this.checkInCodeHash = checkInCodeHash == null ? "" : checkInCodeHash;
     }
 
     public String getId() { return id; }
@@ -50,6 +60,7 @@ public final class Booking {
     public long getDepositAmount() { return depositAmount; }
     public BookingStatus getStatus() { return status; }
     public LocalDateTime getCreatedAt() { return createdAt; }
+    public String getCheckInCodeHash() { return checkInCodeHash; }
     public void setStatus(BookingStatus status) { this.status = status; }
     public long getNights() { return java.time.temporal.ChronoUnit.DAYS.between(checkIn, checkOut); }
 }
