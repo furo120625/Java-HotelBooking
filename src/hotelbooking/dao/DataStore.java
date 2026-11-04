@@ -140,14 +140,14 @@ public final class DataStore {
             for (int i = 0; i < lines.size(); i++) {
                 try {
                     String[] p = lines.get(i).split("\\|", -1);
-                    if (p.length != 13) {
+                    if (p.length != 13 && p.length != 14) {
                         throw new IllegalArgumentException("Sai số trường dữ liệu");
                     }
                     Booking b = new Booking(dec(p[0]), dec(p[1]), dec(p[2]), dec(p[3]), dec(p[4]),
                             Integer.parseInt(p[5]), LocalDate.parse(p[6]), LocalDate.parse(p[7]),
                             p[8].isBlank() ? List.of() : Arrays.asList(p[8].split(",")),
                             Long.parseLong(p[9]), Long.parseLong(p[10]), BookingStatus.valueOf(p[11]),
-                            LocalDateTime.parse(p[12]));
+                            LocalDateTime.parse(p[12]), p.length == 14 ? p[13] : "");
                     bookings.put(b.getId(), b);
                 } catch (RuntimeException ex) {
                     throw new IOException("Dữ liệu đặt phòng lỗi tại data/bookings.txt, dòng " + (i + 1) + ".", ex);
@@ -217,7 +217,8 @@ public final class DataStore {
                     + enc(b.getGuestName()) + "|" + enc(b.getCccd()) + "|" + enc(b.getPhone())
                     + "|" + b.getGuestCount() + "|" + b.getCheckIn() + "|" + b.getCheckOut()
                     + "|" + String.join(",", b.getRoomIds()) + "|" + b.getTotalAmount()
-                    + "|" + b.getDepositAmount() + "|" + b.getStatus() + "|" + b.getCreatedAt());
+                    + "|" + b.getDepositAmount() + "|" + b.getStatus() + "|" + b.getCreatedAt()
+                    + "|" + b.getCheckInCodeHash());
         }
         writeAtomically(BOOKINGS_FILE, lines);
     }

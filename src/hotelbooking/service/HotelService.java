@@ -9,6 +9,10 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.security.MessageDigest;
+import java.security.SecureRandom;
+import java.nio.charset.StandardCharsets;
+import java.util.HexFormat;
 
 public final class HotelService {
     private final DataStore data;
@@ -80,8 +84,8 @@ public final class HotelService {
         return data.bookings().values().stream().noneMatch(b ->
                 b.getRoomIds().contains(roomId)
                 && b.getStatus().blocksAvailability()
-                && checkIn.isBefore(b.getCheckOut())
-                && b.getCheckIn().isBefore(checkOut));
+                && checkIn.isBefore(b.getCheckOut().plusDays(1))
+                && b.getCheckIn().isBefore(checkOut.plusDays(1)));
     }
 
     public synchronized Booking createBooking(User actor, String guestName, String cccd, String phone,
@@ -113,9 +117,11 @@ public final class HotelService {
         long deposit = total / 2 + total % 2;
         String id = "BM-" + LocalDate.now().format(DateTimeFormatter.BASIC_ISO_DATE)
                 + "-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase(Locale.ROOT);
+        String checkInCode = generateCheckInCode();
         Booking booking = new Booking(id, actor.getUsername(), guestName.trim(), cccd.trim(),
                 phone.trim(), guestCount, checkIn, checkOut, new ArrayList<>(uniqueRooms),
-                total, deposit, BookingStatus.PENDING_PAYMENT, LocalDateTime.now());
+                total, deposit, BookingStatus.PENDING_PAYMENT, LocalDateTime.now(), hashCheckInCode(checkInCode));
+        booking.setOneTimeCheckInCode(checkInCode);
         data.bookings().put(id, booking);
         data.payments().put(id, "PENDING");
         data.saveBookings();
@@ -202,15 +208,21 @@ public final class HotelService {
                 bookingId + (paymentState.startsWith("PAID|") ? " | REFUND_REVIEW_REQUIRED" : ""));
     }
 
-    public void checkIn(User actor, String bookingId) throws IOException {
+    public void checkIn(User actor, String bookingId, String suppliedCode) throws IOException {
         requireStaffOrAdmin(actor);
         Booking b = requireBooking(bookingId);
         if (b.getStatus() != BookingStatus.CONFIRMED) throw new IllegalArgumentException("Chỉ nhận phòng với lượt đặt đã xác nhận.");
-        if (LocalDate.now().isBefore(b.getCheckIn())) throw new IllegalArgumentException("Chưa đến ngày nhận phòng.");
-        if (!LocalDate.now().isBefore(b.getCheckOut())) throw new IllegalArgumentException("Đã đến hoặc quá ngày trả phòng.");
+        if (LocalDateTime.now().isBefore(b.getCheckIn().atTime(13, 0))) throw new IllegalArgumentException("Giờ nhận phòng là 13:00 ngày " + b.getCheckIn() + ".");
+        if (!LocalDateTime.now().isBefore(b.getCheckOut().atTime(11, 0))) throw new IllegalArgumentException("Đã hết thời gian nhận phòng của Booking.");
+        boolean legacyBooking = b.getCheckInCodeHash().isBlank();
+        if (!legacyBooking
+                && !MessageDigest.isEqual(hashCheckInCode(suppliedCode).getBytes(StandardCharsets.US_ASCII),
+                        b.getCheckInCodeHash().getBytes(StandardCharsets.US_ASCII))) {
+            throw new SecurityException("Mã check-in không chính xác. Yêu cầu Guest cung cấp mã bí mật của Booking.");
+        }
         b.setStatus(BookingStatus.CHECKED_IN);
         data.saveBookings();
-        data.audit(actor.getUsername(), "CHECK_IN", bookingId);
+        data.audit(actor.getUsername(), legacyBooking ? "CHECK_IN_LEGACY_NO_CODE" : "CHECK_IN", bookingId);
     }
 
     public void checkOut(User actor, String bookingId) throws IOException {
@@ -218,10 +230,6 @@ public final class HotelService {
         Booking b = requireBooking(bookingId);
         if (b.getStatus() != BookingStatus.CHECKED_IN) {
             throw new IllegalArgumentException("Lượt đặt chưa check-in.");
-        }
-        if (LocalDate.now().isBefore(b.getCheckOut())) {
-            throw new IllegalArgumentException("Chưa đến ngày trả phòng (" + b.getCheckOut()
-                    + "). Không thể check-out sớm vì lịch phòng đã được giữ đến ngày này.");
         }
         b.setStatus(BookingStatus.CHECKED_OUT);
         data.saveBookings();
@@ -311,6 +319,24 @@ public final class HotelService {
             } catch (IOException ex) {
                 throw new IllegalStateException(ex);
             }
+        }
+    }
+
+    private static String generateCheckInCode() {
+        final String alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+        SecureRandom random = new SecureRandom();
+        StringBuilder code = new StringBuilder(10);
+        for (int i = 0; i < 10; i++) code.append(alphabet.charAt(random.nextInt(alphabet.length())));
+        return code.toString();
+    }
+
+    private static String hashCheckInCode(String code) {
+        try {
+            String normalized = code == null ? "" : code.trim().toUpperCase(Locale.ROOT);
+            byte[] digest = MessageDigest.getInstance("SHA-256").digest(normalized.getBytes(StandardCharsets.UTF_8));
+            return HexFormat.of().formatHex(digest);
+        } catch (java.security.NoSuchAlgorithmException ex) {
+            throw new IllegalStateException("Không hỗ trợ SHA-256.", ex);
         }
     }
 

@@ -2,6 +2,7 @@ package hotelbooking.ui;
 
 import hotelbooking.model.*;
 import hotelbooking.service.HotelService;
+import hotelbooking.util.DateUtil;
 import java.awt.*;
 import java.io.IOException;
 import java.time.LocalDate;
@@ -86,8 +87,7 @@ public final class DashboardFrame extends JFrame {
     private JPanel buildRoomsTab() {
         JPanel panel = new JPanel(new BorderLayout(8, 8));
         panel.setBorder(BorderFactory.createEmptyBorder(12, 12, 12, 12));
-        JLabel note = new JLabel("Tình trạng phòng chỉ phản ánh khả năng đặt từ hôm nay đến ngày mai. "
-                + "Hệ thống kiểm tra trùng lịch theo đúng khoảng ngày khi tạo Booking.");
+        JLabel note = new JLabel("Giờ nhận phòng: 13:00 | Giờ trả phòng: 11:00. Ngày trả phòng vẫn được giữ chỗ đến hết ngày trên lịch đặt phòng.");
         panel.add(note, BorderLayout.NORTH);
         roomTable.setRowHeight(28);
         panel.add(new JScrollPane(roomTable), BorderLayout.CENTER);
@@ -192,7 +192,7 @@ public final class DashboardFrame extends JFrame {
         long active = service.getBookings(user).stream()
                 .filter(b -> b.getStatus().blocksAvailability()).count();
         summary.setText("Số lượt đặt đang hoạt động: " + active
-                + "    |    Ngày hệ thống: " + LocalDate.now());
+                + "    |    Ngày hệ thống: " + DateUtil.format(LocalDate.now()));
     }
 
     private void refreshRooms() {
@@ -212,11 +212,11 @@ public final class DashboardFrame extends JFrame {
         for (Booking b : bookings) {
             if (user.getRole() == Role.GUEST) {
                 bookingModel.addRow(new Object[]{b.getId(), String.join(", ", b.getRoomIds()),
-                        b.getCheckIn(), b.getCheckOut(), String.format("%,d đ", b.getTotalAmount()),
+                        DateUtil.format(b.getCheckIn()), DateUtil.format(b.getCheckOut()), String.format("%,d đ", b.getTotalAmount()),
                         String.format("%,d đ", b.getDepositAmount()), b.getStatus()});
             } else {
                 bookingModel.addRow(new Object[]{b.getId(), String.join(", ", b.getRoomIds()),
-                        b.getGuestName(), b.getPhone(), b.getCccd(), b.getCheckIn(), b.getCheckOut(),
+                        b.getGuestName(), b.getPhone(), b.getCccd(), DateUtil.format(b.getCheckIn()), DateUtil.format(b.getCheckOut()),
                         String.format("%,d đ", b.getTotalAmount()), String.format("%,d đ", b.getDepositAmount()),
                         b.getStatus()});
             }
@@ -306,7 +306,17 @@ public final class DashboardFrame extends JFrame {
         String id = selectedBookingId();
         if (id == null) return;
         try {
-            if (checkIn) service.checkIn(user, id); else service.checkOut(user, id);
+            if (checkIn) {
+                JTextField code = new JTextField();
+                JPanel panel = new JPanel(new GridLayout(0, 1, 6, 6));
+                panel.add(new JLabel("Nhập mã bí mật do Guest cung cấp (10 ký tự):"));
+                panel.add(code);
+                if (JOptionPane.showConfirmDialog(this, panel, "Xác thực mã check-in: " + id,
+                        JOptionPane.OK_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE) != JOptionPane.OK_OPTION) return;
+                service.checkIn(user, id, code.getText());
+            } else {
+                service.checkOut(user, id);
+            }
             refreshAll();
         } catch (RuntimeException | IOException ex) { showError(ex); }
     }
