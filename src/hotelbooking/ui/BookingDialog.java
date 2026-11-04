@@ -2,6 +2,7 @@ package hotelbooking.ui;
 
 import hotelbooking.model.*;
 import hotelbooking.service.HotelService;
+import hotelbooking.util.DateUtil;
 import java.awt.*;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
@@ -19,8 +20,8 @@ final class BookingDialog extends JDialog {
     private final JTextField cccd = new JTextField();
     private final JTextField phone = new JTextField();
     private final JSpinner guests = new JSpinner(new SpinnerNumberModel(2, 1, 100, 1));
-    private final JTextField checkIn = new JTextField(LocalDate.now().plusDays(1).toString());
-    private final JTextField checkOut = new JTextField(LocalDate.now().plusDays(2).toString());
+    private final JTextField checkIn = new JTextField(DateUtil.format(LocalDate.now().plusDays(1)));
+    private final JTextField checkOut = new JTextField(DateUtil.format(LocalDate.now().plusDays(2)));
     private final DefaultTableModel model = new DefaultTableModel(
             new Object[]{"Chọn", "Phòng", "Tầng", "Loại", "Sức chứa", "Giá/đêm", "Tình trạng"}, 0) {
         @Override public Class<?> getColumnClass(int column) {
@@ -43,8 +44,11 @@ final class BookingDialog extends JDialog {
         form.add(new JLabel("CCCD")); form.add(cccd);
         form.add(new JLabel("Số điện thoại")); form.add(phone);
         form.add(new JLabel("Số lượng khách")); form.add(guests);
-        form.add(new JLabel("Nhận phòng (yyyy-MM-dd)")); form.add(checkIn);
-        form.add(new JLabel("Trả phòng (yyyy-MM-dd)")); form.add(checkOut);
+        form.add(new JLabel("Nhận phòng (dd/MM/yyyy)")); form.add(checkIn);
+        form.add(new JLabel("Trả phòng (dd/MM/yyyy)")); form.add(checkOut);
+
+        JLabel scheduleNote = new JLabel("Giờ nhận phòng: 13:00 | Giờ trả phòng: 11:00. Ngày trả phòng vẫn được giữ chỗ đến 11:00.");
+        form.add(scheduleNote); form.add(new JLabel(""));
 
         table.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
         table.setRowHeight(27);
@@ -69,8 +73,13 @@ final class BookingDialog extends JDialog {
     }
 
     private LocalDate parseDate(JTextField field, String label) {
-        try { return LocalDate.parse(field.getText().trim()); }
-        catch (DateTimeParseException ex) { throw new IllegalArgumentException(label + " phải theo dạng yyyy-MM-dd."); }
+        try {
+            LocalDate parsed = DateUtil.parse(field.getText());
+            field.setText(DateUtil.format(parsed));
+            return parsed;
+        } catch (IllegalArgumentException ex) {
+            throw new IllegalArgumentException(label + " không hợp lệ. Hãy nhập dd/MM/yyyy, ví dụ 09/01/2026.");
+        }
     }
 
     private void refreshRooms() {
