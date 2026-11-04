@@ -47,7 +47,7 @@ final class BookingDialog extends JDialog {
         form.add(new JLabel("Nhận phòng (dd/MM/yyyy)")); form.add(checkIn);
         form.add(new JLabel("Trả phòng (dd/MM/yyyy)")); form.add(checkOut);
 
-        JLabel scheduleNote = new JLabel("Giờ nhận phòng: 13:00 | Giờ trả phòng: 11:00. Ngày trả phòng vẫn được giữ chỗ đến 11:00.");
+        JLabel scheduleNote = new JLabel("Giờ nhận phòng: 13:00 | Giờ trả phòng: 11:00. Ngày trả phòng vẫn bị khóa trên lịch đặt phòng đến hết ngày.");
         form.add(scheduleNote); form.add(new JLabel(""));
 
         table.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
@@ -117,7 +117,10 @@ final class BookingDialog extends JDialog {
             JOptionPane.showMessageDialog(this,
                     "Đã tạo lượt đặt " + booking.getId() + ". Tiền cọc cần thanh toán: "
                     + String.format("%,d đ", booking.getDepositAmount())
-                    + "\nLượt đặt đang ở trạng thái PENDING_PAYMENT.");
+                    + "\nLượt đặt đang ở trạng thái PENDING_PAYMENT."
+                    + "\n\nMÃ BÍ MẬT CHECK-IN: " + booking.getOneTimeCheckInCode()
+                    + "\nHãy lưu mã này. Chỉ cung cấp cho nhân viên khi nhận phòng."
+                    + "\nMã chỉ được chấp nhận sau khi Booking đã xác nhận thanh toán.");
             dispose();
             onCreated.accept(booking);
         } catch (RuntimeException | java.io.IOException ex) {
