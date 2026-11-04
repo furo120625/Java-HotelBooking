@@ -214,14 +214,15 @@ public final class HotelService {
         if (b.getStatus() != BookingStatus.CONFIRMED) throw new IllegalArgumentException("Chỉ nhận phòng với lượt đặt đã xác nhận.");
         if (LocalDateTime.now().isBefore(b.getCheckIn().atTime(13, 0))) throw new IllegalArgumentException("Giờ nhận phòng là 13:00 ngày " + b.getCheckIn() + ".");
         if (!LocalDateTime.now().isBefore(b.getCheckOut().atTime(11, 0))) throw new IllegalArgumentException("Đã hết thời gian nhận phòng của Booking.");
-        if (b.getCheckInCodeHash().isBlank()
-                || !MessageDigest.isEqual(hashCheckInCode(suppliedCode).getBytes(StandardCharsets.US_ASCII),
+        boolean legacyBooking = b.getCheckInCodeHash().isBlank();
+        if (!legacyBooking
+                && !MessageDigest.isEqual(hashCheckInCode(suppliedCode).getBytes(StandardCharsets.US_ASCII),
                         b.getCheckInCodeHash().getBytes(StandardCharsets.US_ASCII))) {
             throw new SecurityException("Mã check-in không chính xác. Yêu cầu Guest cung cấp mã bí mật của Booking.");
         }
         b.setStatus(BookingStatus.CHECKED_IN);
         data.saveBookings();
-        data.audit(actor.getUsername(), "CHECK_IN", bookingId);
+        data.audit(actor.getUsername(), legacyBooking ? "CHECK_IN_LEGACY_NO_CODE" : "CHECK_IN", bookingId);
     }
 
     public void checkOut(User actor, String bookingId) throws IOException {
