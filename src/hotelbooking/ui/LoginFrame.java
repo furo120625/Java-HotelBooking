@@ -48,8 +48,8 @@ public final class LoginFrame extends JFrame {
         JLabel usernameLabel = new JLabel("Tên đăng nhập");
         JLabel passwordLabel = new JLabel("Mật khẩu");
         for (JLabel label : new JLabel[]{usernameLabel, passwordLabel}) {
-            label.setHorizontalAlignment(SwingConstants.LEFT);
-            label.setAlignmentX(Component.LEFT_ALIGNMENT);
+            label.setHorizontalAlignment(SwingConstants.CENTER);
+            label.setAlignmentX(Component.CENTER_ALIGNMENT);
             label.setMaximumSize(new Dimension(Integer.MAX_VALUE, label.getPreferredSize().height));
         }
 
